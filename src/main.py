@@ -200,7 +200,13 @@ class MainFrame(wx.Frame):
         grid.Add(wx.StaticText(panel, label="Copyright:"), 0, wx.ALIGN_CENTER_VERTICAL)
         grid.Add(self.tc_copyright, 1, wx.EXPAND)
 
-        sizer.Add(grid, 1, wx.EXPAND | wx.ALL, 5)
+        sizer.Add(grid, 0, wx.EXPAND | wx.ALL, 5)
+
+        # Thumbnail preview
+        thumb_label = wx.StaticText(panel, label="Preview")
+        sizer.Add(thumb_label, 0, wx.LEFT | wx.TOP, 6)
+        self.preview_bitmap = wx.StaticBitmap(panel, bitmap=wx.NullBitmap, size=(320, 240))
+        sizer.Add(self.preview_bitmap, 0, wx.ALL, 5)
 
         panel.SetSizer(sizer)
         return panel
@@ -318,6 +324,22 @@ class MainFrame(wx.Frame):
         # Could display in a status bar or dialog
         exif = metadata.get('exif', {})
         self.SetStatusText(f"File: {Path(file_path).name} | EXIF fields: {len(exif)}")
+        # Update thumbnail preview (scaled)
+        try:
+            img = wx.Image(file_path)
+            iw, ih = img.GetSize()
+            maxw, maxh = 320, 240
+            scale = min(maxw / iw, maxh / ih, 1.0)
+            nw, nh = int(iw * scale), int(ih * scale)
+            img = img.Scale(nw, nh, wx.IMAGE_QUALITY_HIGH)
+            bmp = wx.Bitmap(img)
+            self.preview_bitmap.SetBitmap(bmp)
+        except Exception:
+            # clear bitmap on failure
+            try:
+                self.preview_bitmap.SetBitmap(wx.NullBitmap)
+            except Exception:
+                pass
 
     def on_template_selected(self, event):
         """Load selected template into editor."""
@@ -365,11 +387,14 @@ class MainFrame(wx.Frame):
         if self.current_template:
             # Update existing template
             metadata = self.collect_editor_metadata()
-            self.template_manager.templates[self.current_template] = {
-                'metadata': metadata,
-                'description': f"Updated template: {self.current_template}"
+            template_data = {
+                'name': self.current_template,
+                'description': f"Updated template: {self.current_template}",
+                'metadata': metadata
             }
-            self.template_manager.save_templates()
+            # Persist the updated template to disk
+            self.template_manager.templates[self.current_template] = template_data
+            self.template_manager.save_template(self.current_template, template_data)
             wx.MessageBox(f"Template '{self.current_template}' updated.", "Success", wx.OK | wx.ICON_INFORMATION)
         else:
             self.on_new_template(event)
@@ -564,9 +589,11 @@ class BatchRenameDialog(wx.Dialog):
             pad = 0
         case = self.choice_case.GetString(self.choice_case.GetSelection())
 
-        # Preview first 3 files from the list
+        # Build preview mapping for the files in the provided list (show up to 500 entries)
         lines = []
-        for i in range(min(3, len(self.file_list))):
+        limit = min(len(self.file_list), 500)
+        for i in range(limit):
+            orig = Path(self.file_list[i])
             idx = start + i
             index_str = str(idx).zfill(pad)
             new_base = pattern.replace('{index}', index_str)
@@ -576,10 +603,12 @@ class BatchRenameDialog(wx.Dialog):
                 new_base = new_base.upper()
             elif case == 'title':
                 new_base = new_base.title()
-            
-            # Show filename with extension from original
-            orig_file = Path(self.file_list[i])
-            lines.append(f"{new_base}{orig_file.suffix}")
+
+            new_name = f"{new_base}{orig.suffix}"
+            lines.append(f"{orig.name} -> {new_name}")
+
+        if len(self.file_list) > limit:
+            lines.append(f"... and {len(self.file_list)-limit} more ...")
 
         self.tc_preview.SetValue('\n'.join(lines))
 

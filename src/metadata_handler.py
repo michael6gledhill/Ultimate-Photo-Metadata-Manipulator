@@ -410,6 +410,25 @@ class MetadataHandler:
                         zeroth[piexif.ImageIFD.Artist] = metadata_updates['authors'].encode('utf-8', errors='replace')
                     if 'copyright' in metadata_updates and metadata_updates['copyright']:
                         zeroth[piexif.ImageIFD.Copyright] = metadata_updates['copyright'].encode('utf-8', errors='replace')
+                    # Tags (keywords) - write to XPKeywords (UTF-16LE) and XPSubject if available
+                    if 'tags' in metadata_updates and metadata_updates['tags']:
+                        tags = metadata_updates['tags']
+                        if isinstance(tags, str):
+                            tags = [t.strip() for t in tags.split(',') if t.strip()]
+                        # join with semicolon for XPKeywords
+                        try:
+                            joined = '; '.join(tags)
+                            # XPKeywords expects UTF-16LE bytes
+                            zeroth[piexif.ImageIFD.XPKeywords] = joined.encode('utf-16le', errors='replace')
+                        except Exception:
+                            pass
+                        # also write XPSubject as a short subject string
+                        try:
+                            subj = metadata_updates.get('subject', '')
+                            if subj:
+                                zeroth[piexif.ImageIFD.XPSubject] = str(subj).encode('utf-16le', errors='replace')
+                        except Exception:
+                            pass
                     # Comments -> UserComment (Exif IFD)
                     if 'comments' in metadata_updates and metadata_updates['comments']:
                         exif_ifd = exif_dict.setdefault('Exif', {})
