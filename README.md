@@ -1,8 +1,48 @@
 # Ultimate Photo Metadata Manipulator
 
-A powerful, open-source tool for reading, editing, and managing photo metadata.
+A powerful desktop application for batch editing photo metadata with an intuitive GUI. Built with wxPython for cross-platform compatibility.
 
 Everything you need for this project is free and open-source.
+
+---
+
+## Features
+
+### 🖼️ **Batch Photo Management**
+- Drag-and-drop multiple photos into the queue
+- Visual thumbnail preview of selected photos
+- Process hundreds of images at once
+
+### ✏️ **Metadata Editor**
+- Edit Title, Subject, Tags, Comments, Authors, and Copyright
+- Auto-populate editor with current metadata from selected photo
+- Apply metadata to all photos or individual selections
+- Real-time preview of changes
+
+### 📋 **Template System**
+- Create and save metadata templates for reuse
+- Update existing templates with current editor values
+- Delete templates you no longer need
+- Quick template selection from dropdown
+
+### ⚡ **Batch Operations**
+- **Apply Metadata to All Photos** - Apply editor values to entire queue
+- **Delete All Metadata** - Strip all metadata from all photos
+- **Batch Rename Photos** - Five rename modes:
+  - Pattern with {index} placeholder
+  - Add prefix to filenames
+  - Add suffix to filenames
+  - Find and replace text
+  - Increment with numbering
+- **Clear Metadata from Selected** - Remove metadata from single photo
+
+### 🔧 **Advanced Features**
+- Progress dialogs with cancel support
+- Case transformation (as-is, lower, upper, title)
+- Zero-padding for numbered files
+- Subject written to both EXIF (XPSubject) and XMP (dc:subject)
+- UTF-16LE decoding for Windows metadata fields
+- GPS coordinate conversion (DMS to decimal)
 
 ---
 
@@ -19,33 +59,21 @@ Everything you need for this project is free and open-source.
 
 ## 1. Install required tools
 
-### Install Xcode Command Line Tools (recommended)
-The Command Line Tools are usually sufficient for many development tasks and are quick to install:
+cd ~/
 
-1. Press `Cmd + Space` to open Spotlight Search, type `Terminal`, and press `Enter`.
-2. Open Terminal and run:
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 
-	```bash
-	xcode-select --install
-	```
+brew install git
 
-3. Follow the prompts to complete the installation.
+sudo port install git
 
-### Install Python and Pip
-1. Download the latest version of Python from [python.org](https://www.python.org/downloads/macos/) and follow the instructions to install it.
-2. Go to the "**Downloads**" section of the website and click on the button below "**Download for macOS**" to start the download.
-3. Launch the downloaded `.pkg` file and follow the installation instructions.
-4. Once Python is installed, move the Python installer to the Trash.
+xcode-select --install
 
-### Install wxPython
-1. Open Terminal and run:
+git clone https://github.com/michael6gledhill/Ultimate-Photo-Metadata-Manipulator.git
 
-	```bash
-	pip3 install --upgrade pip
-	pip3 install wxPython
-	```
+cd Ultimate-Photo-Metadata-Manipulator
 
----
+./run.sh
 
 ---
 
@@ -82,60 +110,90 @@ cd src
 python3 main.py
 ```
 
-### Features
+Or use the provided run script:
 
-#### 1. **View Metadata**
-- Open any supported image format (JPEG, PNG, TIFF, GIF, BMP)
-- View organized EXIF, XMP, and general metadata
-- Export metadata as JSON or TXT files
+```bash
+./run.sh
+```
 
-#### 2. **Clean & Delete Metadata**
-- Remove all metadata at once
-- Delete specific metadata fields
-- Save cleaned images with a new filename or overwrite original
+---
 
-#### 3. **Edit Metadata**
-- Add or modify EXIF, XMP, and IPTC metadata
-- Real-time validation and preview
+## User Interface
 
-#### 4. **Metadata Templates**
-- Create reusable templates (e.g., "Portfolio Upload", "Client Delivery")
-- Apply templates to single or batch images
-- Import/export templates as JSON
+### Layout
 
-#### 5. **Batch Operations**
-- Process multiple images at once
-- Apply templates across multiple files
+The application has a clean 3-panel layout:
+
+**Left Panel - Photo Queue**
+- Drag and drop photos or use File → Add Photos
+- Click on any photo to preview and auto-load its metadata
+- Remove selected photo from queue
+
+**Center Panel - Metadata Editor**
+- Template dropdown for quick template selection
+- Edit fields: Title, Subject, Tags, Comments, Authors, Copyright
+- Thumbnail preview of selected photo
+
+**Right Panel - Actions**
+
+*Batch Actions:*
+- Apply Metadata to All Photos
+- Delete All Metadata
+- Batch Rename Photos
+
+*Single Photo Actions:*
+- Apply to Selected
+- Clear Metadata from Selected
+
+*Templates:*
+- Save As New Template
+- Update Selected Template
+- Delete Selected Template
 
 ---
 
 ## Usage Examples
 
-### Open and View Image Metadata
+### Edit Multiple Photos
 
-1. Click **"Open Image"** button or use `Ctrl+O`
-2. Select an image file
-3. Metadata appears in the right panel organized by section (EXIF, XMP, General)
+1. Drag photos into the queue (left panel)
+2. Select a template from the dropdown or enter metadata manually
+3. Click **"Apply Metadata to All Photos"**
+4. Progress dialog shows operation status
 
-### Clear All Metadata
+### Edit Single Photo
 
-1. Open an image
-2. Click **"Clear All"** button
-3. Choose to save as new file or overwrite original
-4. Cleaned image is saved without any metadata
+1. Add photos to queue
+2. Click on a photo in the queue (auto-loads current metadata)
+3. Edit the metadata fields
+4. Click **"Apply to Selected"**
 
-### Create and Apply Templates
+### Batch Rename
 
-1. Click **"Templates"** button
-2. Create a new template with a name (e.g., "Portfolio Upload")
-3. Define metadata to include (copyright, author, keywords)
-4. Apply template to images for consistent metadata
+1. Add photos to queue
+2. Click **"Batch Rename Photos"**
+3. Choose rename mode:
+   - **Pattern**: Use `photo_{index}` format
+   - **Prefix**: Add text before filename
+   - **Suffix**: Add text after filename
+   - **Find & Replace**: Replace text in filenames
+   - **Increment**: Add sequential numbers
+4. Preview first 3 renames
+5. Click **"Rename All Now"**
 
-### Export Metadata
+### Create Template
 
-1. Open an image
-2. Go to **Metadata** menu → **Export as JSON** or **Export as TXT**
-3. Choose destination and save
+1. Fill in metadata fields you want to save
+2. Click **"Save As New Template"**
+3. Enter template name
+4. Template is saved and selected in dropdown
+
+### Update Template
+
+1. Select a template from dropdown
+2. Modify metadata fields as needed
+3. Click **"Update Selected Template"**
+4. Confirm update
 
 ---
 
@@ -143,11 +201,11 @@ python3 main.py
 
 - **JPEG / JPG** ✓
 - **PNG** ✓
-- **TIFF** ✓
+- **TIFF / TIF** ✓
 - **GIF** ✓
 - **BMP** ✓
 
-RAW formats (CR2, NEF, ARW, DNG) require additional libraries and are marked for future enhancement.
+RAW formats (CR2, NEF, ARW, DNG) require additional libraries and are planned for future releases.
 
 ---
 
@@ -155,17 +213,38 @@ RAW formats (CR2, NEF, ARW, DNG) require additional libraries and are marked for
 
 ### Dependencies
 
-- **Pillow** — Image processing and manipulation
+- **wxPython** — Cross-platform GUI framework
+- **Pillow** — Image processing and thumbnail generation
 - **piexif** — EXIF data reading and writing
-- **pyxmp** — XMP metadata handling
-- **wxPython** — Cross-platform GUI
+- **python-xmp-toolkit** (libxmp) — XMP metadata handling
 
 ### Architecture
 
-- **MetadataHandler** — Core metadata operations (read, edit, delete)
-- **TemplateManager** — Template creation, storage, and application
-- **MainFrame** — wxPython GUI with file browser and metadata viewer
-- **TemplateDialog** — Template management interface
+**Core Components:**
+- `MainFrame` — Main application window with 3-panel layout
+- `MetadataHandler` — Metadata operations (read, edit, delete)
+- `TemplateManager` — Template CRUD operations
+- `BatchRenameDialog` — Multi-mode file renaming interface
+
+**Key Features:**
+- UTF-16LE decoding for Windows XP metadata fields
+- Rational number conversion for EXIF values
+- GPS DMS to decimal coordinate conversion
+- Embedded null character removal for clean metadata
+- Progress dialogs with cancel support
+- Auto-layout refresh for immediate UI rendering
+
+### Template Storage
+
+Templates are stored as JSON files in:
+```
+~/.photo_metadata_templates/
+```
+
+Each template contains:
+- Template name
+- Description
+- Metadata fields (title, subject, tags, comments, authors, copyright)
 
 ---
 
@@ -183,12 +262,41 @@ Contributions are welcome! Please:
 
 ## Future Enhancements
 
-- Support for RAW image formats (CR2, NEF, ARW, DNG)
-- Batch processing with progress bar
-- Advanced metadata search and filtering
-- GUI customization and theming
-- Metadata comparison between images
-- Automated metadata cleanup profiles
+- [ ] Support for RAW image formats (CR2, NEF, ARW, DNG)
+- [ ] IPTC metadata support
+- [ ] Metadata comparison between images
+- [ ] Advanced search and filter in photo queue
+- [ ] Undo/redo functionality
+- [ ] Export/import templates
+- [ ] Metadata presets library
+- [ ] Custom metadata fields
+- [ ] Batch geolocation editing
+- [ ] Metadata validation rules
+
+---
+
+## Keyboard Shortcuts
+
+- `Ctrl+O` — Add photos to queue
+- `Ctrl+Q` — Exit application
+
+---
+
+## Troubleshooting
+
+### Window appears blank until resized
+The app now includes automatic layout finalization. If this issue persists, try:
+- Updating to the latest wxPython version
+- Running on a different display/resolution
+
+### Metadata not showing correctly
+- Ensure the image contains metadata (some formats don't support all fields)
+- Check that you have the correct Python packages installed
+- For XMP metadata, ensure `libxmp` is properly installed
+
+### Template not saving
+- Check permissions for `~/.photo_metadata_templates/` directory
+- Ensure template name doesn't contain invalid characters
 
 ---
 

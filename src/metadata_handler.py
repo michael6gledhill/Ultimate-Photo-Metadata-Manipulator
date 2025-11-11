@@ -410,7 +410,7 @@ class MetadataHandler:
                         zeroth[piexif.ImageIFD.Artist] = metadata_updates['authors'].encode('utf-8', errors='replace')
                     if 'copyright' in metadata_updates and metadata_updates['copyright']:
                         zeroth[piexif.ImageIFD.Copyright] = metadata_updates['copyright'].encode('utf-8', errors='replace')
-                    # Tags (keywords) - write to XPKeywords (UTF-16LE) and XPSubject if available
+                    # Tags (keywords) - write to XPKeywords (UTF-16LE)
                     if 'tags' in metadata_updates and metadata_updates['tags']:
                         tags = metadata_updates['tags']
                         if isinstance(tags, str):
@@ -422,13 +422,13 @@ class MetadataHandler:
                             zeroth[piexif.ImageIFD.XPKeywords] = joined.encode('utf-16le', errors='replace')
                         except Exception:
                             pass
-                        # also write XPSubject as a short subject string
-                        try:
-                            subj = metadata_updates.get('subject', '')
-                            if subj:
-                                zeroth[piexif.ImageIFD.XPSubject] = str(subj).encode('utf-16le', errors='replace')
-                        except Exception:
-                            pass
+                    # Always write XPSubject if a subject is provided (do not depend on tags)
+                    try:
+                        subj = metadata_updates.get('subject', '')
+                        if subj:
+                            zeroth[piexif.ImageIFD.XPSubject] = str(subj).encode('utf-16le', errors='replace')
+                    except Exception:
+                        pass
                     # Comments -> UserComment (Exif IFD)
                     if 'comments' in metadata_updates and metadata_updates['comments']:
                         exif_ifd = exif_dict.setdefault('Exif', {})
@@ -482,8 +482,20 @@ class MetadataHandler:
                 # creators as rdf:Seq
                 creator_items = ''.join([f'<rdf:li>{_escape(a.strip())}</rdf:li>' for a in (authors.split(';') if ';' in authors else [authors]) if a.strip()])
                 xmp_lines.append(f'<dc:creator><rdf:Seq>{creator_items}</rdf:Seq></dc:creator>')
+            # dc:subject should contain tags and/or the human-readable "subject" string
+            subj_val = metadata_updates.get('subject', '')
+            subj_items = []
             if tags:
-                tag_items = ''.join([f'<rdf:li>{_escape(t)}</rdf:li>' for t in tags])
+                subj_items.extend([_escape(t) for t in tags])
+            if subj_val:
+                # If subject is a comma-separated string, split it; otherwise include as single item
+                if isinstance(subj_val, str) and (',' in subj_val or ';' in subj_val):
+                    extra = [s.strip() for s in re.split('[,;]', subj_val) if s.strip()]
+                    subj_items.extend([_escape(s) for s in extra])
+                else:
+                    subj_items.append(_escape(str(subj_val)))
+            if subj_items:
+                tag_items = ''.join([f'<rdf:li>{s}</rdf:li>' for s in subj_items])
                 xmp_lines.append(f'<dc:subject><rdf:Bag>{tag_items}</rdf:Bag></dc:subject>')
             if rights:
                 xmp_lines.append(f'<dc:rights><rdf:Alt><rdf:li xml:lang="x-default">{_escape(rights)}</rdf:li></rdf:Alt></dc:rights>')
