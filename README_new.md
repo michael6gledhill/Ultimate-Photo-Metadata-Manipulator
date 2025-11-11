@@ -6,46 +6,6 @@ Everything you need for this project is free and open-source.
 
 ---
 
-## Features
-
-### 🖼️ **Batch Photo Management**
-- Drag-and-drop multiple photos into the queue
-- Visual thumbnail preview of selected photos
-- Process hundreds of images at once
-
-### ✏️ **Metadata Editor**
-- Edit Title, Subject, Tags, Comments, Authors, and Copyright
-- Auto-populate editor with current metadata from selected photo
-- Apply metadata to all photos or individual selections
-- Real-time preview of changes
-
-### 📋 **Template System**
-- Create and save metadata templates for reuse
-- Update existing templates with current editor values
-- Delete templates you no longer need
-- Quick template selection from dropdown
-
-### ⚡ **Batch Operations**
-- **Apply Metadata to All Photos** - Apply editor values to entire queue
-- **Delete All Metadata** - Strip all metadata from all photos
-- **Batch Rename Photos** - Five rename modes:
-  - Pattern with {index} placeholder
-  - Add prefix to filenames
-  - Add suffix to filenames
-  - Find and replace text
-  - Increment with numbering
-- **Clear Metadata from Selected** - Remove metadata from single photo
-
-### 🔧 **Advanced Features**
-- Progress dialogs with cancel support
-- Case transformation (as-is, lower, upper, title)
-- Zero-padding for numbered files
-- Subject written to both EXIF (XPSubject) and XMP (dc:subject)
-- UTF-16LE decoding for Windows metadata fields
-- GPS coordinate conversion (DMS to decimal)
-
----
-
 ## Installation (macOS)
 
 ### Requirements
@@ -97,21 +57,43 @@ python3 main.py
 
 ---
 
-## Project Structure
+## Features
 
-```
-Ultimate-Photo-Metadata-Manipulator/
-├── src/
-│   ├── __init__.py
-│   ├── main.py                 # wxPython GUI application
-│   ├── metadata_handler.py     # Core metadata reading/editing
-│   └── templates.py            # Template manager for batch operations
-├── data/                       # Sample images and templates
-├── tests/                      # Unit tests
-├── requirements.txt            # Python dependencies
-├── README.md                   # This file
-└── app.outline.md              # Project outline and feature roadmap
-```
+### 🖼️ **Batch Photo Management**
+- Drag-and-drop multiple photos into the queue
+- Visual thumbnail preview of selected photos
+- Process hundreds of images at once
+
+### ✏️ **Metadata Editor**
+- Edit Title, Subject, Tags, Comments, Authors, and Copyright
+- Auto-populate editor with current metadata from selected photo
+- Apply metadata to all photos or individual selections
+- Real-time preview of changes
+
+### 📋 **Template System**
+- Create and save metadata templates for reuse
+- Update existing templates with current editor values
+- Delete templates you no longer need
+- Quick template selection from dropdown
+
+### ⚡ **Batch Operations**
+- **Apply Metadata to All Photos** - Apply editor values to entire queue
+- **Delete All Metadata** - Strip all metadata from all photos
+- **Batch Rename Photos** - Five rename modes:
+  - Pattern with {index} placeholder
+  - Add prefix to filenames
+  - Add suffix to filenames
+  - Find and replace text
+  - Increment with numbering
+- **Clear Metadata from Selected** - Remove metadata from single photo
+
+### 🔧 **Advanced Features**
+- Progress dialogs with cancel support
+- Case transformation (as-is, lower, upper, title)
+- Zero-padding for numbered files
+- Subject written to both EXIF (XPSubject) and XMP (dc:subject)
+- UTF-16LE decoding for Windows metadata fields
+- GPS coordinate conversion (DMS to decimal)
 
 ---
 
@@ -245,33 +227,6 @@ Each template contains:
 
 ---
 
-## Contributing
-
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/your-feature`)
-3. Commit your changes (`git commit -am 'Add new feature'`)
-4. Push to the branch (`git push origin feature/your-feature`)
-5. Open a Pull Request
-
----
-
-## Future Enhancements
-
-- [ ] Support for RAW image formats (CR2, NEF, ARW, DNG)
-- [ ] IPTC metadata support
-- [ ] Metadata comparison between images
-- [ ] Advanced search and filter in photo queue
-- [ ] Undo/redo functionality
-- [ ] Export/import templates
-- [ ] Metadata presets library
-- [ ] Custom metadata fields
-- [ ] Batch geolocation editing
-- [ ] Metadata validation rules
-
----
-
 ## Keyboard Shortcuts
 
 - `Ctrl+O` — Add photos to queue
@@ -294,6 +249,18 @@ The app now includes automatic layout finalization. If this issue persists, try:
 ### Template not saving
 - Check permissions for `~/.photo_metadata_templates/` directory
 - Ensure template name doesn't contain invalid characters
+
+---
+
+## Contributing
+
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/your-feature`)
+3. Commit your changes (`git commit -am 'Add new feature'`)
+4. Push to the branch (`git push origin feature/your-feature`)
+5. Open a Pull Request
 
 ---
 
