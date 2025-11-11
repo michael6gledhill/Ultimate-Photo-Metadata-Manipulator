@@ -4,11 +4,6 @@ python-xmp-toolkit>=1.4.3
 wxPython>=4.2.0
 python-magic-bin>=0.4.14
 
-# NOTE: If pyxmp installation fails or you prefer the XMP Toolkit,
-# you can install the alternative package:
-#
-#   pip3 install python-xmp-toolkit
-#
-# If you install `python-xmp-toolkit`, the code may require small changes
-# (the toolkit exposes `libxmp` rather than `xmp`). If you'd like, I can
-# update `src/metadata_handler.py` to detect and use `python-xmp-toolkit`.
+# Dev (optional) packaging tool
+pyinstaller>=6.0.0
+

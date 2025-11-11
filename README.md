@@ -97,22 +97,118 @@ python3 main.py
 
 ---
 
-## Project Structure
+## Build a Standalone macOS App Bundle
 
-```
-Ultimate-Photo-Metadata-Manipulator/
-├── src/
-│   ├── __init__.py
-│   ├── main.py                 # wxPython GUI application
-│   ├── metadata_handler.py     # Core metadata reading/editing
-│   └── templates.py            # Template manager for batch operations
-├── data/                       # Sample images and templates
-├── tests/                      # Unit tests
-├── requirements.txt            # Python dependencies
-├── README.md                   # This file
-└── app.outline.md              # Project outline and feature roadmap
+You can package the application into a self‑contained `.app` using **PyInstaller**. This lets you distribute it like a normal macOS application.
+
+### 1. Install PyInstaller (development only)
+
+Add (or install) PyInstaller:
+
+```bash
+pip3 install pyinstaller
 ```
 
+Or add to `requirements.txt` (optional for dev):
+
+```
+# Dev packaging
+pyinstaller>=6.0.0
+```
+
+### 2. (Optional) Create an Application Icon
+
+1. Create a 1024x1024 PNG (e.g. `icon.png`).
+2. Generate an `.icns` file:
+
+```bash
+mkdir icon.iconset
+sips -z 16 16     icon.png --out icon.iconset/icon_16x16.png
+sips -z 32 32     icon.png --out icon.iconset/icon_16x16@2x.png
+sips -z 32 32     icon.png --out icon.iconset/icon_32x32.png
+sips -z 64 64     icon.png --out icon.iconset/icon_32x32@2x.png
+sips -z 128 128   icon.png --out icon.iconset/icon_128x128.png
+sips -z 256 256   icon.png --out icon.iconset/icon_128x128@2x.png
+sips -z 256 256   icon.png --out icon.iconset/icon_256x256.png
+sips -z 512 512   icon.png --out icon.iconset/icon_256x256@2x.png
+sips -z 512 512   icon.png --out icon.iconset/icon_512x512.png
+cp icon.png icon.iconset/icon_512x512@2x.png
+iconutil -c icns icon.iconset -o app_icon.icns
+rm -r icon.iconset
+```
+
+Place `app_icon.icns` in the project root.
+
+### 3. Run PyInstaller
+
+From the project root:
+
+```bash
+pyinstaller \
+  --name "PhotoMetadataManipulator" \
+  --windowed \
+  --icon app_icon.icns \
+  --add-data "src:src" \
+  src/main.py
+```
+
+Explanation:
+- `--windowed` hides the terminal window.
+- `--add-data "src:src"` bundles the `src` package (format is `source:dest` on macOS/Linux).
+- Adjust name/icon as desired.
+
+Output appears in `dist/PhotoMetadataManipulator.app`.
+
+### 4. Test the .app
+
+```bash
+open dist/PhotoMetadataManipulator.app
+```
+
+If Gatekeeper blocks it, right‑click → Open the first time.
+
+### 5. (Optional) Codesign for Distribution
+
+Use your Developer ID Certificate (requires Apple developer account):
+
+```bash
+codesign --deep --force --verify --verbose \
+  --sign "Developer ID Application: Your Name (TEAMID)" \
+  dist/PhotoMetadataManipulator.app
+```
+
+You can notarize for wider distribution (advanced—see Apple docs):
+
+```bash
+xcrun notarytool submit dist/PhotoMetadataManipulator.app \
+  --apple-id YOUR_APPLE_ID --team-id TEAMID --password APP_SPECIFIC_PASSWORD \
+  --wait
+```
+
+Staple ticket:
+
+```bash
+xcrun stapler staple dist/PhotoMetadataManipulator.app
+```
+
+### 6. Create a DMG (Optional)
+
+```bash
+hdiutil create -volname PhotoMetadataManipulator -srcfolder dist/PhotoMetadataManipulator.app -ov -format UDZO PhotoMetadataManipulator.dmg
+```
+
+Distribute the `.dmg` file.
+
+### 7. Common Packaging Issues
+
+| Issue | Fix |
+|-------|-----|
+| App opens then closes immediately | Run without `--windowed` to see errors. |
+| Missing libxmp/piexif at runtime | Add `--hidden-import python_xmp_toolkit` etc. |
+| Resources not found | Ensure `--add-data "src:src"` is correct. |
+| Icon not showing | Verify `.icns` path and rebuild. |
+
+---
 ---
 
 ## User Interface
@@ -254,21 +350,6 @@ Contributions are welcome! Please:
 3. Commit your changes (`git commit -am 'Add new feature'`)
 4. Push to the branch (`git push origin feature/your-feature`)
 5. Open a Pull Request
-
----
-
-## Future Enhancements
-
-- [ ] Support for RAW image formats (CR2, NEF, ARW, DNG)
-- [ ] IPTC metadata support
-- [ ] Metadata comparison between images
-- [ ] Advanced search and filter in photo queue
-- [ ] Undo/redo functionality
-- [ ] Export/import templates
-- [ ] Metadata presets library
-- [ ] Custom metadata fields
-- [ ] Batch geolocation editing
-- [ ] Metadata validation rules
 
 ---
 
