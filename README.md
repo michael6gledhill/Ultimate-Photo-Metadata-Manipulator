@@ -41,13 +41,13 @@ Two ways to download:
 2. Copy and paste these commands one at a time:  - Add suffix to filenames
   - Find and replace text
 ```bash  - Increment with numbering
-cd ~/Documents- **Clear Metadata from Selected** - Remove metadata from single photo
+cd ~/Downloads- **Clear Metadata from Selected** - Remove metadata from single photo
 
 1. Open **Terminal** (press Cmd+Space, type "terminal", press Enter)
 2. Copy and paste these commands one at a time:
 
 ```bash
-cd ~/Documents
+cd ~/Downloads
 git clone https://github.com/michael6gledhill/Ultimate-Photo-Metadata-Manipulator.git
 cd Ultimate-Photo-Metadata-Manipulator
 ```
@@ -83,7 +83,7 @@ xcode-select --install
 2. Navigate to the app folder:
 
 ```bash
-cd ~/Documents/Ultimate-Photo-Metadata-Manipulator
+cd ~/Downloads/Ultimate-Photo-Metadata-Manipulator
 ```
 
 3. Install the required libraries:
@@ -165,7 +165,7 @@ python3 src/main.py
 1. Click the green **"Code"** button at the top of this page
 2. Click **"Download ZIP"**
 3. Right-click the ZIP file → Extract All
-4. Move the extracted folder to your Documents
+4. Move the extracted folder to your Downloads
 
 **STEP 2: Install Python**
 
@@ -180,7 +180,7 @@ python3 src/main.py
 2. Navigate to the app folder:
 
 ```cmd
-cd %USERPROFILE%\Documents\Ultimate-Photo-Metadata-Manipulator
+cd %USERPROFILE%\Downloads\Ultimate-Photo-Metadata-Manipulator
 ```
 
 3. Install libraries:
@@ -248,7 +248,7 @@ cd Ultimate-Photo-Metadata-Manipulator### 🔧 **Advanced Features**
 
 ```bash```bash
 
-cd ~/Documents/Ultimate-Photo-Metadata-Manipulatorcd ~/Documents
+cd ~/Downloads/Ultimate-Photo-Metadata-Manipulatorcd ~/Downloads
 
 ```git clone https://github.com/michael6gledhill/Ultimate-Photo-Metadata-Manipulator.git
 
@@ -408,7 +408,7 @@ cp icon.png icon.iconset/icon_512x512@2x.png
 
 3. Right-click the ZIP file → Extract All```
 
-4. Move the extracted folder to your Documents
+4. Move the extracted folder to your Downloads
 
 Result: `logo.icns` in the project root.
 
@@ -634,7 +634,7 @@ If the interactive viewer opens instead, scroll to the end and type `agree`.
 
 ```cmdscripts/build_mac.sh --arch arm64
 
-cd %USERPROFILE%\Documents\Ultimate-Photo-Metadata-Manipulator
+cd %USERPROFILE%\Downloads\Ultimate-Photo-Metadata-Manipulator
 
 ```# Build for Intel (x86_64)
 
