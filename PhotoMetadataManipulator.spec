@@ -3,10 +3,10 @@
 
 a = Analysis(
     ['src/main.py'],
-    pathex=[],
+    pathex=['src'],
     binaries=[],
-    datas=[('src', 'src')],
-    hiddenimports=['libxmp', 'piexif'],
+    datas=[],
+    hiddenimports=['piexif', 'libxmp'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
