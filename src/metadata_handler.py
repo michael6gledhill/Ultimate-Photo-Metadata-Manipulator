@@ -739,10 +739,166 @@ class MetadataHandler:
                         pass
 
         except Exception as e:
-            # If libxmp is not present or fails, record and continue
-            self.last_error = f"Error writing XMP: {str(e)}"
+            # If libxmp is not present or fails, try fallback: inject XMP packet directly
+            try:
+                # Build XMP packet
+                def _escape(s: str) -> str:
+                    import xml.sax.saxutils as sax
+                    return sax.escape(s)
+
+                def _split_items(s: str):
+                    return [p.strip() for p in re.split('[,;]', s) if p.strip()]
+
+                headline = metadata_updates.get('headline') or metadata_updates.get('title') or ''
+                description = metadata_updates.get('description') or metadata_updates.get('comments', '')
+                creator = metadata_updates.get('creator') or metadata_updates.get('authors', '')
+                rights = metadata_updates.get('rights') or metadata_updates.get('copyright', '')
+                subject_val = metadata_updates.get('subject', '')
+                date_created = metadata_updates.get('date_created', '')
+
+                xmp_lines = [
+                    '<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>',
+                    '<x:xmpmeta xmlns:x="adobe:ns:meta/">',
+                    '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">',
+                    '<rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" '
+                    'xmlns:photoshop="http://ns.adobe.com/photoshop/1.0/" '
+                    'xmlns:xmp="http://ns.adobe.com/xap/1.0/"'
+                    f'{(" photoshop:Headline=\"" + _escape(headline) + "\"") if headline else ""}'
+                    f'{(" xmp:CreateDate=\"" + _escape(date_created) + "\"") if date_created else ""}'
+                    f'{(" photoshop:DateCreated=\"" + _escape(date_created) + "\"") if date_created else ""}'
+                    '>'
+                ]
+                if description:
+                    xmp_lines.append(f'<dc:description><rdf:Alt><rdf:li xml:lang="x-default">{_escape(description)}</rdf:li></rdf:Alt></dc:description>')
+                if creator:
+                    creator_items = ''.join([f'<rdf:li>{_escape(a.strip())}</rdf:li>' for a in (_split_items(creator) if isinstance(creator, str) else [creator]) if a])
+                    xmp_lines.append(f'<dc:creator><rdf:Seq>{creator_items}</rdf:Seq></dc:creator>')
+                
+                subj_items = []
+                if subject_val:
+                    if isinstance(subject_val, str):
+                        subj_items.extend([_escape(s) for s in _split_items(subject_val)])
+                    elif isinstance(subject_val, list):
+                        subj_items.extend([_escape(str(s)) for s in subject_val if str(s).strip()])
+                if subj_items:
+                    tag_items = ''.join([f'<rdf:li>{s}</rdf:li>' for s in subj_items])
+                    xmp_lines.append(f'<dc:subject><rdf:Bag>{tag_items}</rdf:Bag></dc:subject>')
+                
+                if rights:
+                    xmp_lines.append(f'<dc:rights><rdf:Alt><rdf:li xml:lang="x-default">{_escape(rights)}</rdf:li></rdf:Alt></dc:rights>')
+
+                xmp_lines.append('</rdf:Description>')
+                xmp_lines.append('</rdf:RDF>')
+                xmp_lines.append('</x:xmpmeta>')
+                xmp_lines.append('<?xpacket end="w"?>')
+
+                xmp_packet = '\n'.join(xmp_lines).encode('utf-8')
+                
+                # Inject XMP into JPEG APP1 marker
+                if self.get_file_extension(save_path) in ('.jpg', '.jpeg'):
+                    self._inject_xmp_into_jpeg(save_path, xmp_packet)
+            except Exception as fallback_err:
+                self.last_error = f"Error writing XMP (libxmp and fallback both failed): {str(e)}, {str(fallback_err)}"
 
         return True
+
+    def _inject_xmp_into_jpeg(self, file_path: str, xmp_packet: bytes):
+        """Inject XMP packet into JPEG file as APP1 marker."""
+        try:
+            with open(file_path, 'rb') as f:
+                data = f.read()
+            
+            # JPEG structure: FFD8 (SOI) followed by markers
+            # APP1 marker for XMP: FFE1 [length] "http://ns.adobe.com/xap/1.0/\x00" [XMP packet]
+            XMP_NAMESPACE = b'http://ns.adobe.com/xap/1.0/\x00'
+            
+            # Remove existing XMP if present
+            output = bytearray()
+            pos = 0
+            
+            if data[0:2] != b'\xff\xd8':
+                raise ValueError("Not a valid JPEG file")
+            
+            output.extend(data[0:2])  # SOI marker
+            pos = 2
+            
+            xmp_injected = False
+            
+            while pos < len(data) - 1:
+                if data[pos] != 0xFF:
+                    # No more markers, rest is image data
+                    output.extend(data[pos:])
+                    break
+                
+                marker = data[pos+1]
+                pos += 2
+                
+                # Skip existing XMP APP1 markers
+                if marker == 0xE1:  # APP1
+                    if pos + 2 <= len(data):
+                        length = (data[pos] << 8) | data[pos+1]
+                        if pos + length <= len(data):
+                            segment_data = data[pos+2:pos+length]
+                            if segment_data.startswith(XMP_NAMESPACE):
+                                # Skip this XMP marker
+                                pos += length
+                                continue
+                
+                # For markers with length
+                if marker in [0xC0, 0xC2, 0xC4, 0xDB, 0xDD, 0xDA, 0xFE] or (0xE0 <= marker <= 0xEF):
+                    if pos + 2 > len(data):
+                        break
+                    length = (data[pos] << 8) | data[pos+1]
+                    
+                    # Inject XMP after first APP0/APP1 marker (before other data)
+                    if not xmp_injected and marker in [0xE0, 0xE1]:
+                        output.append(0xFF)
+                        output.append(marker)
+                        output.extend(data[pos:pos+length])
+                        pos += length
+                        
+                        # Now inject our XMP
+                        xmp_data = XMP_NAMESPACE + xmp_packet
+                        xmp_length = len(xmp_data) + 2
+                        if xmp_length <= 0xFFFF:
+                            output.append(0xFF)
+                            output.append(0xE1)
+                            output.append((xmp_length >> 8) & 0xFF)
+                            output.append(xmp_length & 0xFF)
+                            output.extend(xmp_data)
+                            xmp_injected = True
+                        continue
+                    
+                    output.append(0xFF)
+                    output.append(marker)
+                    output.extend(data[pos:pos+length])
+                    pos += length
+                elif marker == 0xD9:  # EOI
+                    # If we haven't injected yet, do it before EOI
+                    if not xmp_injected:
+                        xmp_data = XMP_NAMESPACE + xmp_packet
+                        xmp_length = len(xmp_data) + 2
+                        if xmp_length <= 0xFFFF:
+                            output.append(0xFF)
+                            output.append(0xE1)
+                            output.append((xmp_length >> 8) & 0xFF)
+                            output.append(xmp_length & 0xFF)
+                            output.extend(xmp_data)
+                            xmp_injected = True
+                    output.append(0xFF)
+                    output.append(marker)
+                    break
+                else:
+                    # Standalone marker
+                    output.append(0xFF)
+                    output.append(marker)
+            
+            # Write modified JPEG
+            with open(file_path, 'wb') as f:
+                f.write(output)
+                
+        except Exception as e:
+            raise Exception(f"Failed to inject XMP: {str(e)}")
 
     def export_metadata_json(self, file_path: str, output_json_path: str) -> bool:
         """Export metadata to a JSON file."""

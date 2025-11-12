@@ -50,6 +50,12 @@ class MainFrame(wx.Frame):
         # After show, schedule a final layout/refresh and a size event to force painting
         wx.CallAfter(self._finalize_layout)
 
+        # Start live metadata refresh timer (every 0.5s)
+        self._meta_display_last_text = ""
+        self.metadata_timer = wx.Timer(self)
+        self.Bind(wx.EVT_TIMER, self.on_metadata_timer, self.metadata_timer)
+        self.metadata_timer.Start(500)
+
     def init_ui(self):
         """Initialize the UI with file queue, editor, and batch controls."""
         main_panel = wx.Panel(self)
@@ -214,16 +220,15 @@ class MainFrame(wx.Frame):
 
         sizer.Add(editor_label, 0, wx.ALL, 5)
 
-        grid = wx.FlexGridSizer(6, 2, 8, 8)
+        grid = wx.FlexGridSizer(5, 2, 8, 8)
         grid.AddGrowableCol(1, 1)
 
-        # Fields: Headline, Description, Creator, Subject, Rights, Date Created
+        # Fields: Headline, Description, Creator, Subject, Rights
         self.tc_headline = wx.TextCtrl(panel)
         self.tc_description = wx.TextCtrl(panel, style=wx.TE_MULTILINE, size=(-1, 60))
         self.tc_creator = wx.TextCtrl(panel)
         self.tc_subject = wx.TextCtrl(panel)
         self.tc_rights = wx.TextCtrl(panel)
-        self.tc_date_created = wx.TextCtrl(panel)
 
         grid.Add(wx.StaticText(panel, label="Headline:"), 0, wx.ALIGN_CENTER_VERTICAL)
         grid.Add(self.tc_headline, 1, wx.EXPAND)
@@ -235,22 +240,32 @@ class MainFrame(wx.Frame):
         grid.Add(self.tc_subject, 1, wx.EXPAND)
         grid.Add(wx.StaticText(panel, label="Rights:"), 0, wx.ALIGN_CENTER_VERTICAL)
         grid.Add(self.tc_rights, 1, wx.EXPAND)
-        grid.Add(wx.StaticText(panel, label="Date Created:"), 0, wx.ALIGN_CENTER_VERTICAL)
-        grid.Add(self.tc_date_created, 1, wx.EXPAND)
 
         sizer.Add(grid, 0, wx.EXPAND | wx.ALL, 5)
 
         # Thumbnail preview
         thumb_label = wx.StaticText(panel, label="Preview")
         sizer.Add(thumb_label, 0, wx.LEFT | wx.TOP, 6)
+        preview_row = wx.BoxSizer(wx.HORIZONTAL)
         self.preview_bitmap = wx.StaticBitmap(panel, bitmap=wx.NullBitmap, size=(320, 240))
         # Right-click to show full metadata; tooltip set dynamically when preview loads
         self.preview_bitmap.Bind(wx.EVT_RIGHT_DOWN, self.on_preview_right_click)
-        sizer.Add(self.preview_bitmap, 0, wx.ALL, 5)
+        preview_row.Add(self.preview_bitmap, 0, wx.ALL, 5)
+
+        # Live metadata display (JSON-like), updates every 0.5s
+        self.tc_meta_display = wx.TextCtrl(panel, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_DONTWRAP, size=(500, 240))
+        try:
+            self.tc_meta_display.SetFont(wx.Font(11, wx.FONTFAMILY_MODERN, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL))
+        except Exception:
+            pass
+        preview_row.Add(self.tc_meta_display, 1, wx.EXPAND | wx.ALL, 5)
+
+        sizer.Add(preview_row, 0, wx.EXPAND | wx.ALL, 0)
 
         panel.SetSizer(sizer)
         panel.Layout()
         return panel
+
 
     def create_action_panel(self, parent) -> wx.Panel:
         """Create right panel with batch action buttons."""
@@ -428,14 +443,12 @@ class MainFrame(wx.Frame):
             subject = str(subj_val) if subj_val else ''
         
         rights = xmp.get('rights', '') or exif.get('Copyright', '')
-        date_created = xmp.get('DateCreated', '') or xmp.get('CreateDate', '') or exif.get('DateTimeOriginal', '')
 
         self.tc_headline.SetValue(str(headline).strip() if headline else '')
         self.tc_description.SetValue(str(description).strip() if description else '')
         self.tc_creator.SetValue(str(creator).strip() if creator else '')
         self.tc_subject.SetValue(subject.strip() if subject else '')
         self.tc_rights.SetValue(str(rights).strip() if rights else '')
-        self.tc_date_created.SetValue(str(date_created).strip() if date_created else '')
         
         # Update thumbnail preview (scaled)
         try:
@@ -523,6 +536,43 @@ class MainFrame(wx.Frame):
         except Exception as e:
             return f"Error building metadata text: {e}"
 
+    def on_metadata_timer(self, event):
+        """Refresh the live metadata view next to the preview every 0.5 seconds."""
+        try:
+            # Ensure control exists
+            if not hasattr(self, 'tc_meta_display'):
+                return
+            text = ""
+            if self.current_file_path:
+                data = self.metadata_handler.read_metadata(self.current_file_path) or {}
+                # keep the last preview metadata in sync
+                self._last_preview_metadata = data
+                exif = data.get('exif', {}) or {}
+                xmp = data.get('xmp', {}) or {}
+
+                def norm(d: Dict[str, Any]) -> Dict[str, Any]:
+                    out: Dict[str, Any] = {}
+                    for k, v in d.items():
+                        if isinstance(v, (list, tuple)):
+                            out[k] = [self._format_value(i) for i in v]
+                        else:
+                            out[k] = self._format_value(v)
+                    return out
+
+                display_obj = {
+                    'EXIF': norm(exif),
+                    'XMP': norm(xmp),
+                }
+                # Pretty-print similar to scripts/metadata_viewer.py
+                text = json.dumps(display_obj, indent=2, ensure_ascii=False)
+
+            if text != getattr(self, '_meta_display_last_text', ""):
+                self.tc_meta_display.SetValue(text)
+                self._meta_display_last_text = text
+        except Exception:
+            # Avoid timer crashes; ignore errors silently
+            pass
+
     def on_preview_right_click(self, event):
         """Show context menu for preview to view/copy full metadata."""
         menu = wx.Menu()
@@ -575,14 +625,13 @@ class MainFrame(wx.Frame):
         
         if template_data:
             self.current_template = template_name
-            # Populate editor with template values
+        # Populate editor with template values (new field names)
             metadata = template_data.get('metadata', {})
-            self.tc_title.SetValue(metadata.get('title', ''))
+            self.tc_headline.SetValue(metadata.get('headline', ''))
+            self.tc_description.SetValue(metadata.get('description', ''))
+            self.tc_creator.SetValue(metadata.get('creator', ''))
             self.tc_subject.SetValue(metadata.get('subject', ''))
-            self.tc_tags.SetValue(','.join(metadata.get('tags', [])))
-            self.tc_comments.SetValue(metadata.get('comments', ''))
-            self.tc_authors.SetValue(metadata.get('authors', ''))
-            self.tc_copyright.SetValue(metadata.get('copyright', ''))
+            self.tc_rights.SetValue(metadata.get('rights', ''))
             
             self.SetStatusText(f"Loaded template: {template_name}")
 
@@ -743,7 +792,6 @@ class MainFrame(wx.Frame):
             'creator': self.tc_creator.GetValue().strip(),
             'subject': self.tc_subject.GetValue().strip(),
             'rights': self.tc_rights.GetValue().strip(),
-            'date_created': self.tc_date_created.GetValue().strip(),
         }
 
     def on_apply_metadata(self, event):
