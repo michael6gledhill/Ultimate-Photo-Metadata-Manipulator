@@ -14,127 +14,235 @@ Everything you need for this project is free and open-source.Everything you need
 
 
 
-## 🚀 Quick Start - For Complete Beginners## Features
 
-
-
-### What This App Does### 🖼️ **Batch Photo Management**
 
 Edit photo metadata (title, description, keywords, copyright, etc.) for hundreds of photos at once. Save time by applying the same information to multiple photos or using templates.- Drag-and-drop multiple photos into the queue
 
-- Visual thumbnail preview of selected photos
-
 ---- Process hundreds of images at once
-
-### ✏️ **Metadata Editor**
 
 ## 📥 How to Download and Install (macOS)- Edit Title, Subject, Tags, Comments, Authors, and Copyright
 
-- Auto-populate editor with current metadata from selected photo
 
 ### Super Simple 5-Step Installation- Apply metadata to all photos or individual selections
 
 - Real-time preview of changes
 
+### 📋 **Template System**
+**Option A: Download as ZIP (Easiest)**- Delete templates you no longer need
+### Super Simple 5-Step Installation
+2. Click **"Download ZIP"**
+3. Find the ZIP file in your Downloads folder### ⚡ **Batch Operations**
+
+Two ways to download:
+
+**Option A: Download as ZIP (Easiest)**
+- **Batch Rename Photos** - Five rename modes:
+1. Open **Terminal** (press Cmd+Space, type "terminal", press Enter)  - Add prefix to filenames
+2. Copy and paste these commands one at a time:  - Add suffix to filenames
+  - Find and replace text
+```bash  - Increment with numbering
+cd ~/Documents- **Clear Metadata from Selected** - Remove metadata from single photo
+
+1. Open **Terminal** (press Cmd+Space, type "terminal", press Enter)
+2. Copy and paste these commands one at a time:
+
+```bash
+cd ~/Documents
+git clone https://github.com/michael6gledhill/Ultimate-Photo-Metadata-Manipulator.git
+cd Ultimate-Photo-Metadata-Manipulator
+```
+
+---
+
+**STEP 2: Install Xcode Command Line Tools**
+
+1. Open **Terminal** (if not already open)
+2. Copy and paste this command:
+
+```bash
+xcode-select --install
+```
+
+3. A popup will appear - click **"Install"**
+4. Wait for it to finish (takes 5-10 minutes)
+
+---
+
+**STEP 3: Install Python (if you don't have it)**
+
+1. Go to [python.org/downloads](https://www.python.org/downloads/)
+2. Click the big yellow **"Download Python 3.12"** button
+3. Open the downloaded file and follow the installer
+4. **Important**: During installation, make sure Python gets added to your system
+
+---
+
+**STEP 4: Install Required Libraries**
+
+1. Open **Terminal**
+2. Navigate to the app folder:
+
+```bash
+cd ~/Documents/Ultimate-Photo-Metadata-Manipulator
+```
+
+3. Install the required libraries:
+
+```bash
+pip3 install -r requirements.txt
+```
+
+Wait for this to finish (takes 2-5 minutes). You'll see lots of text scroll by - that's normal!
+
+---
+
+**STEP 5: Run the App**
+
+Still in Terminal, type:
+
+```bash
+python3 src/main.py
+```
+
+**That's it!** The app window should open.
+
+---
+
+## 🎯 How to Use the App (Quick Guide)
+
+1. **Add Photos**: Drag and drop photos into the left panel, OR click File → Add Photos
+2. **Edit Metadata**: Fill in the fields in the center (Headline, Description, Creator, Subject, Rights)
+3. **Apply to All**: Click "Apply Metadata to All Photos" on the right
+4. **Done!** Your photos now have the metadata you entered
+
+### Save Time with Templates
+
+- Fill in metadata fields
+- Click "Save As New Template"
+- Name your template
+- Next time, just select the template from the dropdown!
+
+### View Metadata
+
+- Click any photo in the queue to see its current metadata
+- Right-click the preview image to see all metadata details
+- The metadata display updates live every 0.5 seconds
+
+---
+
+## 💡 Common Questions
+
+**Q: The app closed immediately after opening**
+- This usually means Python libraries didn't install correctly
+- Try running `pip3 install -r requirements.txt` again
+- Make sure you're in the correct folder (Ultimate-Photo-Metadata-Manipulator)
+
+**Q: I see "command not found" errors**
+- You might not have Python installed correctly
+- Download Python from [python.org](https://www.python.org/downloads/)
+- Try using `python3` instead of `python` in commands
+
+**Q: "xcode-select: error: command line tools are already installed"**
+- Great! You already have what you need. Continue to the next step.
+
+**Q: Can I make this into a regular Mac app I can double-click?**
+- Yes! See the "Build a Standalone App" section below
+
+**Q: Does this work on Windows?**
+- Yes! See the "Windows Installation" section below
+
+**Q: Will this delete my original photos?**
+- No! This app only modifies the metadata (information about the photo), not the image itself
+
+---
+
+## 📦 Windows Installation
+
+### Simple Steps for Windows Users
+
 **STEP 1: Download This App**
+
+1. Click the green **"Code"** button at the top of this page
+2. Click **"Download ZIP"**
+3. Right-click the ZIP file → Extract All
+4. Move the extracted folder to your Documents
+
+**STEP 2: Install Python**
+
+1. Go to [python.org/downloads](https://www.python.org/downloads/)
+2. Download Python 3.12
+3. **IMPORTANT**: Check the box "Add Python to PATH" during installation
+4. Click "Install Now"
+
+**STEP 3: Install Libraries**
+
+1. Open **Command Prompt** (press Windows key, type "cmd", press Enter)
+2. Navigate to the app folder:
+
+```cmd
+cd %USERPROFILE%\Documents\Ultimate-Photo-Metadata-Manipulator
+```
+
+3. Install libraries:
+
+```cmd
+pip install -r requirements.txt
+```
+
+**STEP 4: Run the App**
+
+```cmd
+python src\main.py
+```
+
+---
+
+## Features
+
+### 🖼️ **Batch Photo Management**
+
+- Drag-and-drop multiple photos into the queue
+- Visual thumbnail preview of selected photos
+- Process hundreds of images at once
+
+### ✏️ **Metadata Editor**
+
+- Edit Headline, Description, Creator, Subject, and Rights
+- Auto-populate editor with current metadata from selected photo
+- Apply metadata to all photos or individual selections
+- Real-time preview of changes
 
 ### 📋 **Template System**
 
-Two ways to download:- Create and save metadata templates for reuse
-
+- Create and save metadata templates for reuse
 - Update existing templates with current editor values
+- Delete templates you no longer need
+- Quick template selection from dropdown
 
-**Option A: Download as ZIP (Easiest)**- Delete templates you no longer need
+### ⚡ **Batch Operations**
 
-1. Click the green **"Code"** button at the top of this page- Quick template selection from dropdown
-
-2. Click **"Download ZIP"**
-
-3. Find the ZIP file in your Downloads folder### ⚡ **Batch Operations**
-
-4. Double-click the ZIP to unzip it- **Apply Metadata to All Photos** - Apply editor values to entire queue
-
-5. Drag the unzipped folder to your Documents folder- **Delete All Metadata** - Strip all metadata from all photos
-
+- **Apply Metadata to All Photos** - Apply editor values to entire queue
+- **Delete All Metadata** - Strip all metadata from all photos
 - **Batch Rename Photos** - Five rename modes:
-
-**Option B: Using Terminal (Advanced)**  - Pattern with {index} placeholder
-
-1. Open **Terminal** (press Cmd+Space, type "terminal", press Enter)  - Add prefix to filenames
-
-2. Copy and paste these commands one at a time:  - Add suffix to filenames
-
-  - Find and replace text
-
-```bash  - Increment with numbering
-
-cd ~/Documents- **Clear Metadata from Selected** - Remove metadata from single photo
-
-git clone https://github.com/michael6gledhill/Ultimate-Photo-Metadata-Manipulator.git
+  - Pattern with {index} placeholder
+  - Add prefix to filenames
 
 cd Ultimate-Photo-Metadata-Manipulator### 🔧 **Advanced Features**
 
 ```- Progress dialogs with cancel support
 
-- Case transformation (as-is, lower, upper, title)
-
 ---- Zero-padding for numbered files
 
+
 - Subject written to both EXIF (XPSubject) and XMP (dc:subject)
-
-**STEP 2: Install Xcode Command Line Tools**- UTF-16LE decoding for Windows metadata fields
-
+- Zero-padding for numbered files
+- Writes both EXIF and XMP metadata
+- Preserves camera metadata (doesn't overwrite technical info)
+- Built-in XMP reader/writer (no external libraries required)
+- Right-click preview to view all metadata
+- Hover over queue items to see metadata preview
+- UTF-16LE decoding for Windows metadata fields
 - GPS coordinate conversion (DMS to decimal)
-
-1. Open **Terminal** (if not already open)
-
-2. Copy and paste this command:---
-
-
-
-```bash## Installation (macOS)
-
-xcode-select --install
-
-```### Requirements
-
-- macOS 10.13 or higher
-
-3. A popup will appear - click **"Install"**- Python 3.8 or higher
-
-4. Wait for it to finish (takes 5-10 minutes)- pip3 (comes with Python)
-
-
-
----### Quick Install
-
-
-
-**STEP 3: Install Python (if you don't have it)****Step 1: Install Homebrew (if not already installed)**
-
-
-
-1. Go to [python.org/downloads](https://www.python.org/downloads/)```bash
-
-2. Click the big yellow **"Download Python 3.12"** button/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-3. Open the downloaded file and follow the installer```
-
-4. **Important**: During installation, make sure Python gets added to your system
-
-**Step 2: Install Xcode Command Line Tools**
-
----
-
-```bash
-
-**STEP 4: Install Required Libraries**xcode-select --install
-
-```
-
-1. Open **Terminal**
-
-2. Navigate to the app folder:**Step 3: Clone the Repository**
 
 
 
@@ -313,18 +421,214 @@ Result: `logo.icns` in the project root.
 2. Download Python 3.12This repo includes a macOS build script that supports Intel (x86_64), Apple Silicon (arm64), and universal2 builds.
 
 3. **IMPORTANT**: Check the box "Add Python to PATH" during installation
+## 🏗️ Build a Standalone macOS App (Advanced)
 
+Want to create a double-clickable Mac app? Follow these steps.
+
+### Prerequisites
+
+1. Complete the installation steps above first
+2. Accept Xcode license:
+
+```bash
+sudo xcodebuild -license accept
+```
+
+3. Install PyInstaller:
+
+```bash
+pip3 install pyinstaller
+```
+
+### Build the App
+
+From the project folder in Terminal:
+
+```bash
+# Build for your current Mac
+scripts/build_mac.sh --arch current
+
+# Build for Apple Silicon (M1/M2/M3)
+scripts/build_mac.sh --arch arm64
+
+# Build for Intel Macs
+scripts/build_mac.sh --arch x86_64
+```
+
+Your app will be in: `dist/current/PhotoMetadataManipulator.app`
+
+### Use the App
+
+Double-click to open, or right-click → Open the first time (for unsigned apps).
+
+---
+
+## 🪟 Build a Standalone Windows EXE (Advanced)
+
+Want to create a double-clickable Windows executable?
+
+From PowerShell in the project folder:
+
+```powershell
+# Install PyInstaller first
+pip install pyinstaller
+
+# Build the exe
+powershell -ExecutionPolicy Bypass -File scripts/build_windows.ps1
+```
+
+Your executable will be in: `dist/windows/PhotoMetadataManipulator.exe`
+
+---
+
+## User Interface
+
+### Layout
+
+The application has a clean 3-panel layout:
+
+**Left Panel - Photo Queue**
+- Drag and drop photos or use File → Add Photos
+- Click on any photo to preview and auto-load its metadata
+- Hover over photos to see a quick metadata preview
+- Remove selected photo from queue
+
+**Center Panel - Metadata Editor**
+- Template dropdown for quick template selection
+- Edit fields: Headline, Description, Creator, Subject, Rights
+- Thumbnail preview of selected photo
+- Live metadata display (updates every 0.5 seconds)
+
+**Right Panel - Actions**
+
+*Batch Actions:*
+- Apply Metadata to All Photos
+- Delete All Metadata
+- Batch Rename Photos
+
+*Single Photo Actions:*
+- Apply to Selected
+- Clear Metadata from Selected
+
+*Templates:*
+- Save As New Template
+- Update Selected Template
+- Delete Selected Template
+
+---
+
+## Usage Examples
+
+### Edit Multiple Photos
+
+1. Drag photos into the queue (left panel)
+2. Select a template from the dropdown or enter metadata manually
+3. Click **"Apply Metadata to All Photos"**
+4. Progress dialog shows operation status
+
+### Edit Single Photo
+
+1. Add photos to queue
+2. Click on a photo in the queue (auto-loads current metadata)
+3. Edit the metadata fields
+4. Click **"Apply to Selected"**
+
+### Batch Rename
+
+1. Add photos to queue
+2. Click **"Batch Rename Photos"**
+3. Choose rename mode:
+   - **Pattern**: Use `photo_{index}` format
+   - **Prefix**: Add text before filename
+   - **Suffix**: Add text after filename
+   - **Find & Replace**: Replace text in filenames
+   - **Increment**: Add sequential numbers
+4. Preview first 3 renames
+5. Click **"Rename All Now"**
+
+### Create Template
+
+1. Fill in metadata fields you want to save
+2. Click **"Save As New Template"**
+3. Enter template name
+4. Template is saved and selected in dropdown
+
+### Update Template
+
+1. Select a template from dropdown
+2. Modify metadata fields as needed
+3. Click **"Update Selected Template"**
+4. Confirm update
+
+---
+
+## Supported Image Formats
+
+- **JPEG / JPG** ✓
+- **TIFF / TIF** ✓
+- **GIF** ✓
+- **BMP** ✓
+
+RAW formats (CR2, NEF, ARW, DNG) require additional libraries and are planned for future releases.
+
+---
+
+## Technical Details
+
+### Dependencies
+
+- **wxPython** — Cross-platform GUI framework
+- **Pillow** — Image processing and thumbnail generation
+- **piexif** — EXIF data reading and writing
+- **python-xmp-toolkit** (libxmp) — XMP metadata handling (optional, has built-in fallback)
+
+### Architecture
+
+**Core Components:**
+- `MainFrame` — Main application window with 3-panel layout
+- `MetadataHandler` — Metadata operations (read, edit, delete)
+- `TemplateManager` — Template CRUD operations
+- `BatchRenameDialog` — Multi-mode file renaming interface
+
+**Key Features:**
+- Built-in XMP reader/writer with fallback (no external dependencies required)
+- UTF-16LE decoding for Windows XP metadata fields
+- Rational number conversion for EXIF values
+- GPS DMS to decimal coordinate conversion
+- Embedded null character removal for clean metadata
+- Progress dialogs with cancel support
+- Auto-layout refresh for immediate UI rendering
+- Live metadata display with 0.5s refresh
+
+### Template Storage
+
+Templates are stored as JSON files in:
+```
+~/.photo_metadata_templates/
+```
+
+Each template contains:
+- Template name
+- Description
+- Metadata fields (headline, description, creator, subject, rights)
+
+---
+
+## Advanced Build Details (macOS)
 4. Click "Install Now"Basic usage (from project root):
 
 
-
+### Before You Build
 **STEP 3: Install Libraries**```bash
 
 # Build for your current CPU
 
-1. Open **Command Prompt** (press Windows key, type "cmd", press Enter)scripts/build_mac.sh --arch current
+```bash
+sudo xcodebuild -license accept
+```
 
-2. Navigate to the app folder:
+If the interactive viewer opens instead, scroll to the end and type `agree`.
+
 
 # Build for Apple Silicon (arm64)
 
@@ -405,7 +709,7 @@ pyinstaller \
 ```
 
 ### ⚡ **Batch Operations**
-
+pyinstaller --name "PhotoMetadataManipulator" --windowed --icon logo.icns --paths src src/main.py
 - **Apply Metadata to All Photos** - Apply editor values to entire queueExplanation:
 
 - **Delete All Metadata** - Strip all metadata from all photos- `--windowed` hides the terminal window.
@@ -415,13 +719,13 @@ pyinstaller \
   - Pattern with {index} placeholder- Adjust name/icon as desired.
 
   - Add prefix to filenames
-
+  --paths src \
   - Add suffix to filenamesOutput appears in `dist/PhotoMetadataManipulator.app`.
 
   - Find and replace text
 
   - Increment with numbering### 5. Test the .app
-
+- `--paths src` tells PyInstaller where to find local modules.
 - **Clear Metadata from Selected** - Remove metadata from single photo
 
 ```bash
@@ -466,7 +770,7 @@ Want to create a double-clickable Mac app? Follow these steps.
 
 1. Complete the installation steps above first  --apple-id YOUR_APPLE_ID --team-id TEAMID --password APP_SPECIFIC_PASSWORD \
 
-2. Accept Xcode license:  --wait
+### Common Packaging & Build Issues
 
 ```bash```
 
@@ -475,7 +779,7 @@ sudo xcodebuild -license accept
 ```Staple ticket:
 
 3. Install PyInstaller:
-
+| Resources not found | Confirm `--paths src` is included in build command. |
 ```bash```bash
 
 pip3 install pyinstallerxcrun stapler staple dist/PhotoMetadataManipulator.app
@@ -483,23 +787,18 @@ pip3 install pyinstallerxcrun stapler staple dist/PhotoMetadataManipulator.app
 ``````
 
 
-
-### Build the App### 7. Create a DMG (Optional)
-
-
-
-From the project folder in Terminal:```bash
-
+## Advanced Build Details (Windows)
 hdiutil create -volname PhotoMetadataManipulator -srcfolder dist/PhotoMetadataManipulator.app -ov -format UDZO PhotoMetadataManipulator.dmg
 
 ```bash```
+### Prerequisites
 
 # Build for your current Mac
 
 scripts/build_mac.sh --arch currentDistribute the `.dmg` file.
 
 
-
+### Build using the helper PowerShell script
 # Build for Apple Silicon (M1/M2/M3)### 8. Common Packaging & Build Issues
 
 scripts/build_mac.sh --arch arm64
@@ -509,148 +808,28 @@ scripts/build_mac.sh --arch arm64
 # Build for Intel Macs|-------|-----|
 
 scripts/build_mac.sh --arch x86_64| `SystemError: lipo ... error code 69` with Xcode license message | Run `sudo xcodebuild -license accept` then rebuild. |
-
-```| App opens then closes immediately | Rebuild without `--windowed` to surface console errors. |
+Output: `dist/windows/PhotoMetadataManipulator.exe`
 
 | Missing libxmp at runtime | Optional; the app falls back to a built-in XMP parser. If you need it, install `python-xmp-toolkit` and Homebrew `exempi`. |
 
-Your app will be in: `dist/current/PhotoMetadataManipulator.app`| piexif missing at runtime | Ensure `piexif` is installed (it's in requirements.txt). |
 
 | Build for the other CPU architecture | Use the build script with `--arch x86_64` or `--arch arm64`. For one-app-for-both, try `--arch universal2` with a universal2 Python/wxPython. |
 
-### Use the App| Resources not found | Confirm `--add-data "src:src"` (format is source:dest). |
+pyinstaller --name "PhotoMetadataManipulator" --windowed --paths src src/main.py
 
 | Icon not showing | Ensure file is `logo.icns` in project root; clear `dist/` and rebuild. |
+### Troubleshooting (Windows)
 
 Double-click to open, or right-click → Open the first time (for unsigned apps).| Icon generation warnings: `icon.png not a valid file` | Verify `icon.png` exists in current directory before running `sips` commands. |
 
 | wxPython build/runtime issues on latest Python (e.g. 3.14) | Use a supported version (Python 3.11 or 3.12) until binaries catch up. |
 
----| Gatekeeper blocks unsigned app | Right‑click → Open once, or codesign & notarize (see step 5). |
-
-
-
-## 🪟 Build a Standalone Windows EXE (Advanced)
-
----
-
-Want to create a double-clickable Windows executable?
-
-## User Interface
-
-From PowerShell in the project folder:
-
-### Layout
-
-```powershell
-
-# Install PyInstaller firstThe application has a clean 3-panel layout:
-
-pip install pyinstaller
-
-## Build a Standalone Windows EXE
-
-# Build the exe
 
 powershell -ExecutionPolicy Bypass -File scripts/build_windows.ps1You can package the application into a standalone .exe using PyInstaller on Windows.
-
-```
-
-Prereqs:
-
-Your executable will be in: `dist/windows/PhotoMetadataManipulator.exe`- Windows 10/11
-
-- Python 3.11 or 3.12 installed and on PATH
-
----- pip install -r requirements.txt
-
-- Optional: a Windows icon file `logo.ico` in the project root
-
-## User Interface
-
-Build using the helper PowerShell script:
-
-### Layout
-
-```powershell
-
-The application has a clean 3-panel layout:# From project root in PowerShell
-
-powershell -ExecutionPolicy Bypass -File scripts/build_windows.ps1
-
-**Left Panel - Photo Queue**
-
-- Drag and drop photos or use File → Add Photos# Show console window for debugging
-
-- Click on any photo to preview and auto-load its metadatapowershell -ExecutionPolicy Bypass -File scripts/build_windows.ps1 -Debug
-
-- Hover over photos to see a quick metadata preview```
-
-- Remove selected photo from queue
-
-Output:
-
-**Center Panel - Metadata Editor**- dist/windows/PhotoMetadataManipulator.exe
-
-- Template dropdown for quick template selection
-
-- Edit fields: Headline, Description, Creator, Subject, RightsNotes:
-
-- Thumbnail preview of selected photo- The script auto-detects optional modules (libxmp) and includes them if installed. If not, the app uses built-in XMP fallbacks.
-
-- Live metadata display (updates every 0.5 seconds)- On Windows, the data include flag uses a semicolon: `--add-data "src;src"`.
-
-- If you prefer manual PyInstaller invocation, the minimal command is:
-
-**Right Panel - Actions**
-
-```powershell
-
-*Batch Actions:*pyinstaller --name "PhotoMetadataManipulator" --windowed --add-data "src;src" src/main.py
-
-- Apply Metadata to All Photos```
-
-- Delete All Metadata
-
-- Batch Rename PhotosTroubleshooting (Windows):
-
-- If the app window closes immediately, rebuild with `-Debug` to see console errors.
-
-*Single Photo Actions:*- If antivirus blocks the exe, add an exception or codesign with a trusted certificate.
-
-- Apply to Selected- If wxPython wheels are unavailable for your Python version, try Python 3.11 or 3.12.
-
-- Clear Metadata from Selected
-
-
-
-*Templates:***Left Panel - Photo Queue**
-
-- Save As New Template- Drag and drop photos or use File → Add Photos
-
-- Update Selected Template- Click on any photo to preview and auto-load its metadata
-
-- Delete Selected Template- Remove selected photo from queue
-
-
-
----**Center Panel - Metadata Editor**
-
-- Template dropdown for quick template selection
-
-## Usage Examples- Edit fields: Title, Subject, Tags, Comments, Authors, Copyright
-
-- Thumbnail preview of selected photo
-
-### Edit Multiple Photos
-
-**Right Panel - Actions**
-
-1. Drag photos into the queue (left panel)
-
 2. Select a template from the dropdown or enter metadata manually*Batch Actions:*
 
 3. Click **"Apply Metadata to All Photos"**- Apply Metadata to All Photos
+
 
 4. Progress dialog shows operation status- Delete All Metadata
 
@@ -661,34 +840,64 @@ Output:
 *Single Photo Actions:*
 
 1. Add photos to queue- Apply to Selected
-
+- `Ctrl+O` (or `Cmd+O` on Mac) — Add photos to queue
+- `Ctrl+Q` (or `Cmd+Q` on Mac) — Exit application
 2. Click on a photo in the queue (auto-loads current metadata)- Clear Metadata from Selected
 
 3. Edit the metadata fields
 
 4. Click **"Apply to Selected"***Templates:*
 
+
+The app now includes automatic layout finalization. If this issue persists, try:
+
 - Save As New Template
 
 ### Batch Rename- Update Selected Template
 
+
 - Delete Selected Template
+
 
 1. Add photos to queue
 
-2. Click **"Batch Rename Photos"**---
+
+Then re-run the build script.
 
 3. Choose rename mode:
 
+
    - **Pattern**: Use `photo_{index}` format## Usage Examples
+
 
    - **Prefix**: Add text before filename
 
-   - **Suffix**: Add text after filename### Edit Multiple Photos
+- XMP metadata works even without libxmp installed (uses built-in fallback)
 
    - **Find & Replace**: Replace text in filenames1. Drag photos into the queue (left panel)
 
+
    - **Increment**: Add sequential numbers2. Select a template from the dropdown or enter metadata manually
+
+### "ModuleNotFoundError" when running packaged app
+
+- This has been fixed in the build scripts
+- Make sure you're using the latest version of `scripts/build_mac.sh` or `scripts/build_windows.ps1`
+- The scripts now include `--paths src` to find all modules correctly
+
+### App closes immediately after opening (packaged version)
+
+- Try rebuilding with debug mode to see errors:
+
+```bash
+DEBUG_BUILD=1 scripts/build_mac.sh --arch current
+```
+
+- Run the binary directly to see console output:
+
+```bash
+dist/current/PhotoMetadataManipulator.app/Contents/MacOS/PhotoMetadataManipulator
+```
 
 4. Preview first 3 renames3. Click **"Apply Metadata to All Photos"**
 
@@ -707,6 +916,7 @@ Output:
 3. Enter template name3. Edit the metadata fields
 
 4. Template is saved and selected in dropdown4. Click **"Apply to Selected"**
+
 
 
 
