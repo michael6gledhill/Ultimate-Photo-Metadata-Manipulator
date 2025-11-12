@@ -4,6 +4,8 @@ python-xmp-toolkit>=1.4.3
 wxPython>=4.2.0
 python-magic-bin>=0.4.14
 
+# Note: wxPython may not yet release wheels for the newest Python (e.g. 3.14). Prefer Python 3.11 or 3.12 for stability.
+
 # Dev (optional) packaging tool
 pyinstaller>=6.0.0
 

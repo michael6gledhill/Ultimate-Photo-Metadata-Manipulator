@@ -1172,5 +1172,19 @@ class App(wx.App):
 
 
 if __name__ == '__main__':
-    app = App(False)
-    app.MainLoop()
+    # Robust startup wrapper to capture crashes in packaged app (immediate close diagnosis)
+    try:
+        app = App(False)
+        app.MainLoop()
+    except Exception:
+        import traceback, datetime
+        log_path = os.path.join(os.path.expanduser("~"), "PhotoMetadataManipulator_startup_error.log")
+        try:
+            with open(log_path, "a", encoding="utf-8") as f:
+                f.write(f"[{datetime.datetime.now().isoformat()}] Startup crash:\n")
+                f.write(traceback.format_exc())
+                f.write("\n")
+        except Exception:
+            pass
+        # Re-raise so a console build (DEBUG_BUILD=1) will still show traceback
+        raise

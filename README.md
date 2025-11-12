@@ -101,6 +101,20 @@ python3 main.py
 
 You can package the application into a self‑contained `.app` using **PyInstaller**. This lets you distribute it like a normal macOS application.
 
+### Before You Build (macOS Prerequisites)
+
+Make sure these are in place first:
+
+1. Xcode Command Line Tools installed (`xcode-select --install`).
+2. Xcode license accepted (required for the `lipo` tool used during build). Run:
+  ```bash
+  sudo xcodebuild -license accept
+  ```
+  If the interactive viewer opens instead, scroll to the end and type `agree`.
+3. A supported Python version. wxPython may lag behind the newest Python releases; if you hit issues on 3.14+, try Python 3.11 or 3.12.
+4. An icon file (`logo.icns`) or a source PNG (`icon.png`) you can convert.
+5. A clean virtual environment (recommended) to avoid stray packages.
+
 ### 1. Install PyInstaller (development only)
 
 Add (or install) PyInstaller:
@@ -116,10 +130,12 @@ Or add to `requirements.txt` (optional for dev):
 pyinstaller>=6.0.0
 ```
 
-### 2. (Optional) Create an Application Icon
+### 2. (Optional) Create / Update an Application Icon
 
-1. Create a 1024x1024 PNG (e.g. `icon.png`).
-2. Generate an `.icns` file:
+If you already have `logo.icns` in the project root you can skip this.
+
+1. Create a 1024x1024 PNG named `icon.png`.
+2. Convert it to `.icns`:
 
 ```bash
 mkdir icon.iconset
@@ -133,21 +149,27 @@ sips -z 256 256   icon.png --out icon.iconset/icon_256x256.png
 sips -z 512 512   icon.png --out icon.iconset/icon_256x256@2x.png
 sips -z 512 512   icon.png --out icon.iconset/icon_512x512.png
 cp icon.png icon.iconset/icon_512x512@2x.png
-iconutil -c icns icon.iconset -o app_icon.icns
+iconutil -c icns icon.iconset -o logo.icns
 rm -r icon.iconset
 ```
 
-Place `app_icon.icns` in the project root.
+Result: `logo.icns` in the project root.
 
 ### 3. Run PyInstaller
 
-From the project root:
+From the project root (using the one-line command or the multi-line form):
+
+```bash
+pyinstaller --name "PhotoMetadataManipulator" --windowed --icon logo.icns --add-data "src:src" src/main.py
+```
+
+Or multi-line for readability:
 
 ```bash
 pyinstaller \
   --name "PhotoMetadataManipulator" \
   --windowed \
-  --icon app_icon.icns \
+  --icon logo.icns \
   --add-data "src:src" \
   src/main.py
 ```
@@ -199,16 +221,20 @@ hdiutil create -volname PhotoMetadataManipulator -srcfolder dist/PhotoMetadataMa
 
 Distribute the `.dmg` file.
 
-### 7. Common Packaging Issues
+### 7. Common Packaging & Build Issues
 
 | Issue | Fix |
 |-------|-----|
-| App opens then closes immediately | Run without `--windowed` to see errors. |
-| Missing libxmp/piexif at runtime | Add `--hidden-import python_xmp_toolkit` etc. |
-| Resources not found | Ensure `--add-data "src:src"` is correct. |
-| Icon not showing | Verify `.icns` path and rebuild. |
+| `SystemError: lipo ... error code 69` with Xcode license message | Run `sudo xcodebuild -license accept` then rebuild. |
+| App opens then closes immediately | Rebuild without `--windowed` to surface console errors. |
+| Missing libxmp/piexif at runtime | Add hidden imports: `--hidden-import python_xmp_toolkit --hidden-import piexif`. |
+| Resources not found | Confirm `--add-data "src:src"` (format is source:dest). |
+| Icon not showing | Ensure file is `logo.icns` in project root; clear `dist/` and rebuild. |
+| Icon generation warnings: `icon.png not a valid file` | Verify `icon.png` exists in current directory before running `sips` commands. |
+| wxPython build/runtime issues on latest Python (e.g. 3.14) | Use a supported version (Python 3.11 or 3.12) until binaries catch up. |
+| Gatekeeper blocks unsigned app | Right‑click → Open once, or codesign & notarize (see step 5). |
 
----
+
 ---
 
 ## User Interface
@@ -366,6 +392,16 @@ Contributions are welcome! Please:
 The app now includes automatic layout finalization. If this issue persists, try:
 - Updating to the latest wxPython version
 - Running on a different display/resolution
+
+### Build fails with `lipo` error / Xcode license
+Accept the Xcode license:
+```bash
+sudo xcodebuild -license accept
+```
+Then re-run PyInstaller.
+
+### Warnings: `Could not initialize cikl2metal preamble file`
+These are benign macOS GPU/Metal initialization warnings seen on some systems. They do not affect functionality. Update macOS and GPU drivers (system update) if they persist; otherwise ignore.
 
 ### Metadata not showing correctly
 - Ensure the image contains metadata (some formats don't support all fields)
