@@ -267,17 +267,106 @@ class MetadataHandler:
             with open(file_path, 'rb') as f:
                 xmp_data = pyxmp.get_xmp(f)
                 if xmp_data:
-                    # pyxmp exposes get_dict()
+                    # pyxmp exposes get_dict(); normalize to a flat dict of common fields
+                    def _pick_lang_alt(val):
+                        # pyxmp may store Alt as dict of languages
+                        if isinstance(val, dict):
+                            for k in ('x-default', 'en-US', 'en', next(iter(val.keys()), None)):
+                                if k in val and isinstance(val[k], str) and val[k].strip():
+                                    return val[k].strip()
+                        return val
+
+                    def _ensure_list(val):
+                        if val is None:
+                            return []
+                        if isinstance(val, list):
+                            return [str(v).strip() for v in val if str(v).strip()]
+                        if isinstance(val, str):
+                            return [v.strip() for v in re.split('[,;]', val) if v.strip()]
+                        return [str(val).strip()]
+
                     try:
-                        xmp_dict = xmp_data.get_dict()
+                        raw = xmp_data.get_dict()
                     except Exception:
-                        # Fallback: return raw string if available
+                        raw = {}
+
+                    flat: Dict[str, Any] = {}
+                    # Try common namespaces and keys
+                    # dc:title / description / rights (Alt)
+                    dc = {}
+                    for k in ('dc', 'http://purl.org/dc/elements/1.1/'):
+                        if k in raw and isinstance(raw[k], dict):
+                            dc = raw[k]
+                            break
+                    if isinstance(dc, dict):
+                        if 'title' in dc:
+                            flat['title'] = _pick_lang_alt(dc.get('title'))
+                        if 'description' in dc:
+                            flat['description'] = _pick_lang_alt(dc.get('description'))
+                        if 'rights' in dc:
+                            flat['rights'] = _pick_lang_alt(dc.get('rights'))
+                        if 'creator' in dc:
+                            flat['creator'] = _ensure_list(dc.get('creator'))
+                        if 'subject' in dc:
+                            flat['subject'] = _ensure_list(dc.get('subject'))
+
+                    # photoshop:Headline and DateCreated
+                    ps = {}
+                    for k in ('photoshop', 'http://ns.adobe.com/photoshop/1.0/'):
+                        if k in raw and isinstance(raw[k], dict):
+                            ps = raw[k]
+                            break
+                    if isinstance(ps, dict):
+                        if 'Headline' in ps and isinstance(ps['Headline'], str):
+                            flat['Headline'] = ps['Headline']
+                        if 'DateCreated' in ps and isinstance(ps['DateCreated'], str):
+                            flat['DateCreated'] = ps['DateCreated']
+
+                    # xmp:CreateDate
+                    xmp_ns = {}
+                    for k in ('xmp', 'http://ns.adobe.com/xap/1.0/'):
+                        if k in raw and isinstance(raw[k], dict):
+                            xmp_ns = raw[k]
+                            break
+                    if isinstance(xmp_ns, dict):
+                        if 'CreateDate' in xmp_ns and isinstance(xmp_ns['CreateDate'], str):
+                            flat['CreateDate'] = xmp_ns['CreateDate']
+
+                    # If top-level contains namespaced keys like 'photoshop:Headline', handle them too
+                    for k, v in list(raw.items()):
+                        if isinstance(k, str) and ':' in k:
+                            local = k.split(':', 1)[1]
+                            if local == 'Headline' and isinstance(v, str):
+                                flat['Headline'] = v
+                            elif local == 'DateCreated' and isinstance(v, str):
+                                flat['DateCreated'] = v
+                            elif local == 'CreateDate' and isinstance(v, str):
+                                flat['CreateDate'] = v
+                            elif local == 'title':
+                                flat['title'] = _pick_lang_alt(v)
+                            elif local == 'description':
+                                flat['description'] = _pick_lang_alt(v)
+                            elif local == 'rights':
+                                flat['rights'] = _pick_lang_alt(v)
+                            elif local == 'creator':
+                                flat['creator'] = _ensure_list(v)
+                            elif local == 'subject':
+                                flat['subject'] = _ensure_list(v)
+
+                    # As a last resort, if xmp_data can stringify, store it under 'xmp'
+                    if not flat:
                         xmp_str = getattr(xmp_data, 'to_s', None)
                         if callable(xmp_str):
-                            xmp_dict = {'xmp': xmp_str()}
+                            flat = {'xmp': xmp_str()}
                         else:
-                            xmp_dict = {'xmp': str(xmp_data)}
-            return xmp_dict
+                            flat = {'xmp': str(xmp_data)}
+
+                    # Normalize and return
+                    try:
+                        return self._normalize_metadata_dict(flat)
+                    except Exception:
+                        return flat
+            # If pyxmp path executed but produced nothing useful, fall through to libxmp
         except Exception:
             # pyxmp not available or failed — try python-xmp-toolkit (libxmp)
             pass
@@ -298,9 +387,12 @@ class MetadataHandler:
                                 # Find all rdf:Description elements and collect attributes and child text
                                 ns_rdf = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
                                 for desc in root.findall('.//{'+ns_rdf+'}Description'):
-                                    # attributes (namespaced)
+                                    # attributes (namespaced) - strip namespace prefix to get local name
                                     for k, v in desc.attrib.items():
-                                        xmp_dict[k] = v
+                                        # k might be like '{http://ns.adobe.com/photoshop/1.0/}Headline'
+                                        # strip namespace but keep local name
+                                        local_key = k.split('}', 1)[1] if '}' in k else k
+                                        xmp_dict[local_key] = v
                                     # child nodes: handle rdf:Bag / rdf:Seq / rdf:Alt structures
                                     for child in desc:
                                         tag = child.tag
@@ -338,9 +430,60 @@ class MetadataHandler:
                 return self._normalize_metadata_dict(xmp_dict)
             except Exception:
                 return xmp_dict
+        except Exception as e:
+            # libxmp failed — try fallback: scan file for XMP packet
+            pass
+
+        # Fallback: scan file for XMP packet and parse XML directly
+        try:
+            data = Path(file_path).read_bytes()
+            start = data.find(b"<x:xmpmeta")
+            end = data.find(b"</x:xmpmeta>")
+            if start != -1 and end != -1 and end > start:
+                packet = data[start:end+12]
+                packet_str = packet.decode('utf-8', errors='replace')
+                
+                # Parse the packet
+                try:
+                    from xml.etree import ElementTree as ET
+                    root = ET.fromstring(packet_str)
+                    ns_rdf = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
+                    
+                    for desc in root.findall('.//{'+ns_rdf+'}Description'):
+                        # Attributes (namespaced) - strip namespace prefix to get local name
+                        for k, v in desc.attrib.items():
+                            local_key = k.split('}', 1)[1] if '}' in k else k
+                            xmp_dict[local_key] = v
+                        
+                        # Child elements
+                        for child in desc:
+                            tag = child.tag
+                            tagname = tag.split('}', 1)[1] if '}' in tag else tag
+                            
+                            # Collect rdf:li children if present
+                            li_nodes = child.findall('.//{'+ns_rdf+'}li')
+                            if li_nodes:
+                                li_texts = [(li.text or '').strip() for li in li_nodes if (li.text or '').strip()]
+                                # For title/description/rights prefer single string
+                                if tagname in ('title', 'description', 'rights') and len(li_texts) == 1:
+                                    xmp_dict[tagname] = li_texts[0]
+                                else:
+                                    xmp_dict[tagname] = li_texts
+                            else:
+                                # Fallback to direct text
+                                text = child.text
+                                if text is not None and text.strip():
+                                    xmp_dict[tagname] = text.strip()
+                except Exception:
+                    xmp_dict = {'xmp_raw': packet_str[:500]}
         except Exception:
-            # Give up — return empty dict
-            return {}
+            pass
+        
+        # Normalize and return
+        try:
+            return self._normalize_metadata_dict(xmp_dict)
+        except Exception:
+            return xmp_dict
 
     def delete_all_metadata(self, file_path: str, output_path: Optional[str] = None) -> bool:
         """
@@ -405,43 +548,108 @@ class MetadataHandler:
                 with Image.open(file_path) as img:
                     exif_dict = {}
                     try:
-                        exif_dict = piexif.load(img.info.get('exif', b''))
+                        # First attempt: load from file path to capture all segments
+                        exif_dict = piexif.load(file_path)
                     except Exception:
-                        # start with empty structure
-                        exif_dict = {"0th": {}, "Exif": {}, "GPS": {}, "1st": {}, "thumbnail": None}
-
-                    # Map simple fields to EXIF tags where appropriate
-                    zeroth = exif_dict.setdefault('0th', {})
-                    if 'title' in metadata_updates and metadata_updates['title']:
-                        zeroth[piexif.ImageIFD.ImageDescription] = metadata_updates['title'].encode('utf-8', errors='replace')
-                    if 'authors' in metadata_updates and metadata_updates['authors']:
-                        zeroth[piexif.ImageIFD.Artist] = metadata_updates['authors'].encode('utf-8', errors='replace')
-                    if 'copyright' in metadata_updates and metadata_updates['copyright']:
-                        zeroth[piexif.ImageIFD.Copyright] = metadata_updates['copyright'].encode('utf-8', errors='replace')
-                    # Tags (keywords) - write to XPKeywords (UTF-16LE)
-                    if 'tags' in metadata_updates and metadata_updates['tags']:
-                        tags = metadata_updates['tags']
-                        if isinstance(tags, str):
-                            tags = [t.strip() for t in tags.split(',') if t.strip()]
-                        # join with semicolon for XPKeywords
                         try:
-                            joined = '; '.join(tags)
-                            # XPKeywords expects UTF-16LE bytes
-                            zeroth[piexif.ImageIFD.XPKeywords] = joined.encode('utf-16le', errors='replace')
+                            # Fallback to any exif present in PIL info
+                            exif_dict = piexif.load(img.info.get('exif', b''))
+                        except Exception:
+                            # start with empty structure
+                            exif_dict = {"0th": {}, "Exif": {}, "GPS": {}, "1st": {}, "thumbnail": None}
+
+                    # Optionally purge all metadata except essential camera/capture info
+                    purge_non_camera = metadata_updates.get('purge_non_camera', True)
+                    if purge_non_camera:
+                        # Whitelists for camera/capture related tags to keep
+                        keep_0th = {
+                            piexif.ImageIFD.Make,
+                            piexif.ImageIFD.Model,
+                            piexif.ImageIFD.Orientation,
+                            piexif.ImageIFD.XResolution,
+                            piexif.ImageIFD.YResolution,
+                            piexif.ImageIFD.ResolutionUnit,
+                        }
+                        keep_exif = {
+                            piexif.ExifIFD.DateTimeOriginal,
+                            piexif.ExifIFD.DateTimeDigitized,
+                            piexif.ExifIFD.SubSecTimeOriginal,
+                            piexif.ExifIFD.SubSecTimeDigitized,
+                            piexif.ExifIFD.ExifVersion,
+                            piexif.ExifIFD.ExposureTime,
+                            piexif.ExifIFD.FNumber,
+                            piexif.ExifIFD.ShutterSpeedValue,
+                            piexif.ExifIFD.ApertureValue,
+                            piexif.ExifIFD.ExposureBiasValue,
+                            piexif.ExifIFD.MaxApertureValue,
+                            piexif.ExifIFD.ExposureProgram,
+                            piexif.ExifIFD.ISOSpeedRatings if hasattr(piexif.ExifIFD, 'ISOSpeedRatings') else 0x8827,
+                            piexif.ExifIFD.SensitivityType if hasattr(piexif.ExifIFD, 'SensitivityType') else 0x8830,
+                            piexif.ExifIFD.RecommendedExposureIndex if hasattr(piexif.ExifIFD, 'RecommendedExposureIndex') else 0x8832,
+                            piexif.ExifIFD.MeteringMode,
+                            piexif.ExifIFD.Flash,
+                            piexif.ExifIFD.FocalLength,
+                            piexif.ExifIFD.ColorSpace,
+                            piexif.ExifIFD.FocalPlaneXResolution,
+                            piexif.ExifIFD.FocalPlaneYResolution,
+                            piexif.ExifIFD.FocalPlaneResolutionUnit,
+                            piexif.ExifIFD.CustomRendered if hasattr(piexif.ExifIFD, 'CustomRendered') else 0xA401,
+                            piexif.ExifIFD.ExposureMode if hasattr(piexif.ExifIFD, 'ExposureMode') else 0xA402,
+                            piexif.ExifIFD.WhiteBalance,
+                            piexif.ExifIFD.SceneCaptureType,
+                            piexif.ExifIFD.BodySerialNumber if hasattr(piexif.ExifIFD, 'BodySerialNumber') else 0xA431,
+                            piexif.ExifIFD.LensSpecification if hasattr(piexif.ExifIFD, 'LensSpecification') else 0xA432,
+                            piexif.ExifIFD.LensModel if hasattr(piexif.ExifIFD, 'LensModel') else 0xA434,
+                            piexif.ExifIFD.LensSerialNumber if hasattr(piexif.ExifIFD, 'LensSerialNumber') else 0xA435,
+                        }
+                        # Build a new minimal exif dict
+                        new_exif = {"0th": {}, "Exif": {}, "GPS": {}, "1st": {}, "thumbnail": None}
+                        # Keep GPS block entirely
+                        if isinstance(exif_dict.get('GPS'), dict):
+                            new_exif['GPS'] = dict(exif_dict['GPS'])
+                        # Copy whitelisted 0th and Exif tags
+                        for tag, val in exif_dict.get('0th', {}).items():
+                            if tag in keep_0th:
+                                new_exif['0th'][tag] = val
+                        for tag, val in exif_dict.get('Exif', {}).items():
+                            if tag in keep_exif:
+                                new_exif['Exif'][tag] = val
+                        exif_dict = new_exif
+
+                    # Map our fields to EXIF tags where appropriate
+                    zeroth = exif_dict.setdefault('0th', {})
+                    # New preferred keys with fallback to legacy keys
+                    headline = metadata_updates.get('headline') or metadata_updates.get('title') or ''
+                    creator = metadata_updates.get('creator') or metadata_updates.get('authors') or ''
+                    rights = metadata_updates.get('rights') or metadata_updates.get('copyright') or ''
+                    subject_str = metadata_updates.get('subject', '')
+                    description = metadata_updates.get('description') or metadata_updates.get('comments') or ''
+                    date_created = metadata_updates.get('date_created', '')
+
+                    if headline:
+                        zeroth[piexif.ImageIFD.ImageDescription] = str(headline).encode('utf-8', errors='replace')
+                    if creator:
+                        zeroth[piexif.ImageIFD.Artist] = str(creator).encode('utf-8', errors='replace')
+                    if rights:
+                        zeroth[piexif.ImageIFD.Copyright] = str(rights).encode('utf-8', errors='replace')
+                    # Subject -> XPSubject (UTF-16LE)
+                    if subject_str:
+                        try:
+                            zeroth[piexif.ImageIFD.XPSubject] = str(subject_str).encode('utf-16le', errors='replace')
                         except Exception:
                             pass
-                    # Always write XPSubject if a subject is provided (do not depend on tags)
-                    try:
-                        subj = metadata_updates.get('subject', '')
-                        if subj:
-                            zeroth[piexif.ImageIFD.XPSubject] = str(subj).encode('utf-16le', errors='replace')
-                    except Exception:
-                        pass
-                    # Comments -> UserComment (Exif IFD)
-                    if 'comments' in metadata_updates and metadata_updates['comments']:
+                    # Comments/Description -> UserComment (Exif IFD)
+                    if description:
                         exif_ifd = exif_dict.setdefault('Exif', {})
-                        # UserComment requires a special encoding header; we'll store as plain bytes
-                        exif_ifd[piexif.ExifIFD.UserComment] = metadata_updates['comments'].encode('utf-8', errors='replace')
+                        exif_ifd[piexif.ExifIFD.UserComment] = str(description).encode('utf-8', errors='replace')
+                    # Date Created -> DateTimeOriginal if provided and plausible
+                    if date_created:
+                        try:
+                            exif_ifd = exif_dict.setdefault('Exif', {})
+                            # Accept ISO or EXIF-like format; store as-is
+                            exif_ifd[piexif.ExifIFD.DateTimeOriginal] = str(date_created).encode('utf-8', errors='replace')
+                        except Exception:
+                            pass
 
                     exif_bytes = piexif.dump(exif_dict)
                     # Save with new EXIF
@@ -465,43 +673,47 @@ class MetadataHandler:
                 import xml.sax.saxutils as sax
                 return sax.escape(s)
 
-            title = metadata_updates.get('title', '')
-            description = metadata_updates.get('comments', '')
-            authors = metadata_updates.get('authors', '')
-            rights = metadata_updates.get('copyright', '')
-            tags = metadata_updates.get('tags', []) or []
+            # New keys with fallback
+            headline = metadata_updates.get('headline') or metadata_updates.get('title') or ''
+            description = metadata_updates.get('description') or metadata_updates.get('comments', '')
+            creator = metadata_updates.get('creator') or metadata_updates.get('authors', '')
+            rights = metadata_updates.get('rights') or metadata_updates.get('copyright', '')
+            subject_val = metadata_updates.get('subject', '')
+            date_created = metadata_updates.get('date_created', '')
 
             # Ensure tags is a list
-            if isinstance(tags, str):
-                tags = [t.strip() for t in tags.split(',') if t.strip()]
+            def _split_items(s: str):
+                return [p.strip() for p in re.split('[,;]', s) if p.strip()]
 
             xmp_lines = [
                 '<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?>',
                 '<x:xmpmeta xmlns:x="adobe:ns:meta/">',
                 '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">',
-                '<rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/">'
+                '<rdf:Description xmlns:dc="http://purl.org/dc/elements/1.1/" '
+                'xmlns:photoshop="http://ns.adobe.com/photoshop/1.0/" '
+                'xmlns:xmp="http://ns.adobe.com/xap/1.0/"'
+                f'{(" photoshop:Headline=\"" + _escape(headline) + "\"") if headline else ""}'
+                f'{(" xmp:CreateDate=\"" + _escape(date_created) + "\"") if date_created else ""}'
+                f'{(" photoshop:DateCreated=\"" + _escape(date_created) + "\"") if date_created else ""}'
+                '>'
             ]
-
-            if title:
-                xmp_lines.append(f'<dc:title><rdf:Alt><rdf:li xml:lang="x-default">{_escape(title)}</rdf:li></rdf:Alt></dc:title>')
+            # Prefer Headline over title
+            if headline and False:
+                # keep optional dc:title if needed (disabled by default)
+                xmp_lines.append(f'<dc:title><rdf:Alt><rdf:li xml:lang="x-default">{_escape(headline)}</rdf:li></rdf:Alt></dc:title>')
             if description:
                 xmp_lines.append(f'<dc:description><rdf:Alt><rdf:li xml:lang="x-default">{_escape(description)}</rdf:li></rdf:Alt></dc:description>')
-            if authors:
+            if creator:
                 # creators as rdf:Seq
-                creator_items = ''.join([f'<rdf:li>{_escape(a.strip())}</rdf:li>' for a in (authors.split(';') if ';' in authors else [authors]) if a.strip()])
+                creator_items = ''.join([f'<rdf:li>{_escape(a.strip())}</rdf:li>' for a in (_split_items(creator) if isinstance(creator, str) else [creator]) if a])
                 xmp_lines.append(f'<dc:creator><rdf:Seq>{creator_items}</rdf:Seq></dc:creator>')
-            # dc:subject should contain tags and/or the human-readable "subject" string
-            subj_val = metadata_updates.get('subject', '')
+            # dc:subject from provided subject string (split on ,;)
             subj_items = []
-            if tags:
-                subj_items.extend([_escape(t) for t in tags])
-            if subj_val:
-                # If subject is a comma-separated string, split it; otherwise include as single item
-                if isinstance(subj_val, str) and (',' in subj_val or ';' in subj_val):
-                    extra = [s.strip() for s in re.split('[,;]', subj_val) if s.strip()]
-                    subj_items.extend([_escape(s) for s in extra])
-                else:
-                    subj_items.append(_escape(str(subj_val)))
+            if subject_val:
+                if isinstance(subject_val, str):
+                    subj_items.extend([_escape(s) for s in _split_items(subject_val)])
+                elif isinstance(subject_val, list):
+                    subj_items.extend([_escape(str(s)) for s in subject_val if str(s).strip()])
             if subj_items:
                 tag_items = ''.join([f'<rdf:li>{s}</rdf:li>' for s in subj_items])
                 xmp_lines.append(f'<dc:subject><rdf:Bag>{tag_items}</rdf:Bag></dc:subject>')

@@ -217,25 +217,26 @@ class MainFrame(wx.Frame):
         grid = wx.FlexGridSizer(6, 2, 8, 8)
         grid.AddGrowableCol(1, 1)
 
-        self.tc_title = wx.TextCtrl(panel)
+        # Fields: Headline, Description, Creator, Subject, Rights, Date Created
+        self.tc_headline = wx.TextCtrl(panel)
+        self.tc_description = wx.TextCtrl(panel, style=wx.TE_MULTILINE, size=(-1, 60))
+        self.tc_creator = wx.TextCtrl(panel)
         self.tc_subject = wx.TextCtrl(panel)
-        self.tc_tags = wx.TextCtrl(panel)
-        self.tc_comments = wx.TextCtrl(panel, style=wx.TE_MULTILINE, size=(-1, 60))
-        self.tc_authors = wx.TextCtrl(panel)
-        self.tc_copyright = wx.TextCtrl(panel)
+        self.tc_rights = wx.TextCtrl(panel)
+        self.tc_date_created = wx.TextCtrl(panel)
 
-        grid.Add(wx.StaticText(panel, label="Title:"), 0, wx.ALIGN_CENTER_VERTICAL)
-        grid.Add(self.tc_title, 1, wx.EXPAND)
-        grid.Add(wx.StaticText(panel, label="Subject:"), 0, wx.ALIGN_CENTER_VERTICAL)
+        grid.Add(wx.StaticText(panel, label="Headline:"), 0, wx.ALIGN_CENTER_VERTICAL)
+        grid.Add(self.tc_headline, 1, wx.EXPAND)
+        grid.Add(wx.StaticText(panel, label="Description:"), 0, wx.ALIGN_CENTER_VERTICAL)
+        grid.Add(self.tc_description, 1, wx.EXPAND)
+        grid.Add(wx.StaticText(panel, label="Creator:"), 0, wx.ALIGN_CENTER_VERTICAL)
+        grid.Add(self.tc_creator, 1, wx.EXPAND)
+        grid.Add(wx.StaticText(panel, label="Subject (comma/semicolon-separated):"), 0, wx.ALIGN_CENTER_VERTICAL)
         grid.Add(self.tc_subject, 1, wx.EXPAND)
-        grid.Add(wx.StaticText(panel, label="Tags (comma-separated):"), 0, wx.ALIGN_CENTER_VERTICAL)
-        grid.Add(self.tc_tags, 1, wx.EXPAND)
-        grid.Add(wx.StaticText(panel, label="Comments:"), 0, wx.ALIGN_CENTER_VERTICAL)
-        grid.Add(self.tc_comments, 1, wx.EXPAND)
-        grid.Add(wx.StaticText(panel, label="Authors (semicolon-separated):"), 0, wx.ALIGN_CENTER_VERTICAL)
-        grid.Add(self.tc_authors, 1, wx.EXPAND)
-        grid.Add(wx.StaticText(panel, label="Copyright:"), 0, wx.ALIGN_CENTER_VERTICAL)
-        grid.Add(self.tc_copyright, 1, wx.EXPAND)
+        grid.Add(wx.StaticText(panel, label="Rights:"), 0, wx.ALIGN_CENTER_VERTICAL)
+        grid.Add(self.tc_rights, 1, wx.EXPAND)
+        grid.Add(wx.StaticText(panel, label="Date Created:"), 0, wx.ALIGN_CENTER_VERTICAL)
+        grid.Add(self.tc_date_created, 1, wx.EXPAND)
 
         sizer.Add(grid, 0, wx.EXPAND | wx.ALL, 5)
 
@@ -407,32 +408,34 @@ class MainFrame(wx.Frame):
         exif = metadata.get('exif', {})
         xmp = metadata.get('xmp', {})
         self.SetStatusText(f"File: {Path(file_path).name} | EXIF fields: {len(exif)}")
+
+        # Auto-populate fields (prefer XMP where available)
+        # Headline: ONLY from XMP photoshop:Headline (do not fall back to EXIF ImageDescription, which is usually Description)
+        headline = xmp.get('Headline', '')
         
-        # Auto-populate editor fields with current metadata from file
-        # Priority: EXIF > XMP > empty
-        title = exif.get('ImageDescription', '') or xmp.get('title', '')
-        subject = exif.get('XPSubject', '') or xmp.get('subject', '')
-        # Tags: try XPKeywords (EXIF) first, then dc:subject from XMP
-        tags_val = exif.get('XPKeywords', []) or xmp.get('subject', [])
-        if isinstance(tags_val, list):
-            tags_str = ', '.join(str(t) for t in tags_val)
+        # Description: prefer XMP dc:description, then EXIF UserComment, then fallback to EXIF ImageDescription
+        description = xmp.get('description', '') or exif.get('UserComment', '') or exif.get('ImageDescription', '')
+        
+        creator = xmp.get('creator', '') or exif.get('Artist', '')
+        if isinstance(creator, list):
+            creator = '; '.join(str(a) for a in creator)
+        
+        # Subject: prefer XMP dc:subject bag; fall back to EXIF XPKeywords
+        subj_val = xmp.get('subject', []) or exif.get('XPKeywords', []) or exif.get('XPSubject', [])
+        if isinstance(subj_val, list):
+            subject = ', '.join(str(t) for t in subj_val)
         else:
-            tags_str = str(tags_val) if tags_val else ''
+            subject = str(subj_val) if subj_val else ''
         
-        comments = exif.get('UserComment', '') or xmp.get('description', '')
-        authors = exif.get('Artist', '') or xmp.get('creator', '')
-        if isinstance(authors, list):
-            authors = '; '.join(str(a) for a in authors)
-        copyright_val = exif.get('Copyright', '') or xmp.get('rights', '')
-        
-        # Populate editor with loaded metadata (but don't override if user typed something)
-        # Actually: always load from file to let user see and edit what's currently in the file
-        self.tc_title.SetValue(str(title).strip() if title else '')
-        self.tc_subject.SetValue(str(subject).strip() if subject else '')
-        self.tc_tags.SetValue(tags_str.strip() if tags_str else '')
-        self.tc_comments.SetValue(str(comments).strip() if comments else '')
-        self.tc_authors.SetValue(str(authors).strip() if authors else '')
-        self.tc_copyright.SetValue(str(copyright_val).strip() if copyright_val else '')
+        rights = xmp.get('rights', '') or exif.get('Copyright', '')
+        date_created = xmp.get('DateCreated', '') or xmp.get('CreateDate', '') or exif.get('DateTimeOriginal', '')
+
+        self.tc_headline.SetValue(str(headline).strip() if headline else '')
+        self.tc_description.SetValue(str(description).strip() if description else '')
+        self.tc_creator.SetValue(str(creator).strip() if creator else '')
+        self.tc_subject.SetValue(subject.strip() if subject else '')
+        self.tc_rights.SetValue(str(rights).strip() if rights else '')
+        self.tc_date_created.SetValue(str(date_created).strip() if date_created else '')
         
         # Update thumbnail preview (scaled)
         try:
@@ -733,13 +736,14 @@ class MainFrame(wx.Frame):
 
     def collect_editor_metadata(self) -> Dict[str, Any]:
         """Collect metadata from editor fields."""
+        # Only include selected fields
         return {
-            'title': self.tc_title.GetValue().strip(),
+            'headline': self.tc_headline.GetValue().strip(),
+            'description': self.tc_description.GetValue().strip(),
+            'creator': self.tc_creator.GetValue().strip(),
             'subject': self.tc_subject.GetValue().strip(),
-            'tags': [t.strip() for t in self.tc_tags.GetValue().split(',') if t.strip()],
-            'comments': self.tc_comments.GetValue().strip(),
-            'authors': self.tc_authors.GetValue().strip(),
-            'copyright': self.tc_copyright.GetValue().strip()
+            'rights': self.tc_rights.GetValue().strip(),
+            'date_created': self.tc_date_created.GetValue().strip(),
         }
 
     def on_apply_metadata(self, event):
