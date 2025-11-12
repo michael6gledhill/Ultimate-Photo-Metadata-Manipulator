@@ -25,6 +25,8 @@ class MainFrame(wx.Frame):
         
         # Queue of files to process
         self.file_queue: List[str] = []
+        self.current_file_path: Optional[str] = None
+        self._last_preview_metadata: Optional[Dict[str, Any]] = None
         
         # Current metadata being edited (will be applied to all files in queue)
         self.current_metadata_edits: Dict[str, Any] = {
@@ -241,6 +243,8 @@ class MainFrame(wx.Frame):
         thumb_label = wx.StaticText(panel, label="Preview")
         sizer.Add(thumb_label, 0, wx.LEFT | wx.TOP, 6)
         self.preview_bitmap = wx.StaticBitmap(panel, bitmap=wx.NullBitmap, size=(320, 240))
+        # Right-click to show full metadata; tooltip set dynamically when preview loads
+        self.preview_bitmap.Bind(wx.EVT_RIGHT_DOWN, self.on_preview_right_click)
         sizer.Add(self.preview_bitmap, 0, wx.ALL, 5)
 
         panel.SetSizer(sizer)
@@ -395,6 +399,10 @@ class MainFrame(wx.Frame):
         if not metadata:
             return
         
+        # Remember current file and metadata for tooltip/context menu
+        self.current_file_path = file_path
+        self._last_preview_metadata = metadata
+
         # Could display in a status bar or dialog
         exif = metadata.get('exif', {})
         xmp = metadata.get('xmp', {})
@@ -442,6 +450,115 @@ class MainFrame(wx.Frame):
                 self.preview_bitmap.SetBitmap(wx.NullBitmap)
             except Exception:
                 pass
+
+        # Update tooltip on the preview with a concise metadata summary
+        try:
+            tip = self._build_metadata_tooltip(metadata)
+            self.preview_bitmap.SetToolTip(tip or "No metadata available")
+        except Exception:
+            pass
+
+    def _format_value(self, val: Any) -> str:
+        """Format metadata values for display."""
+        try:
+            if isinstance(val, (list, tuple)):
+                return ', '.join(str(v) for v in val)
+            if isinstance(val, bytes):
+                try:
+                    return val.decode('utf-8', errors='replace')
+                except Exception:
+                    return str(val)
+            return str(val)
+        except Exception:
+            return str(val)
+
+    def _build_metadata_tooltip(self, metadata: Dict[str, Any]) -> str:
+        """Build a compact multi-line tooltip from EXIF/XMP. Truncated to be tooltip-friendly."""
+        lines: List[str] = []
+        exif = metadata.get('exif', {}) or {}
+        xmp = metadata.get('xmp', {}) or {}
+
+        def add_section(title: str, d: Dict[str, Any], limit: int = 20):
+            if not d:
+                return
+            lines.append(f"{title}:")
+            count = 0
+            for k in sorted(d.keys()):
+                v = self._format_value(d.get(k))
+                # Trim very long values for tooltip
+                if len(v) > 200:
+                    v = v[:197] + '...'
+                lines.append(f"  {k}: {v}")
+                count += 1
+                if count >= limit:
+                    lines.append(f"  ... ({len(d)-limit} more)")
+                    break
+
+        add_section("EXIF", exif)
+        add_section("XMP", xmp)
+
+        # Tooltips can be truncated; keep overall length reasonable
+        tip = '\n'.join(lines)
+        if len(tip) > 2000:
+            tip = tip[:1997] + '...'
+        return tip
+
+    def _build_metadata_full_text(self, metadata: Dict[str, Any]) -> str:
+        """Build full text representation of all metadata for the details dialog/clipboard."""
+        try:
+            parts: List[str] = []
+            exif = metadata.get('exif', {}) or {}
+            xmp = metadata.get('xmp', {}) or {}
+            parts.append("=== EXIF ===")
+            for k in sorted(exif.keys()):
+                parts.append(f"{k}: {self._format_value(exif[k])}")
+            parts.append("")
+            parts.append("=== XMP ===")
+            for k in sorted(xmp.keys()):
+                parts.append(f"{k}: {self._format_value(xmp[k])}")
+            return '\n'.join(parts)
+        except Exception as e:
+            return f"Error building metadata text: {e}"
+
+    def on_preview_right_click(self, event):
+        """Show context menu for preview to view/copy full metadata."""
+        menu = wx.Menu()
+        mi_view = menu.Append(wx.ID_ANY, "View Full Metadata")
+        mi_copy = menu.Append(wx.ID_ANY, "Copy All Metadata")
+
+        def _on_view(evt):
+            self._open_metadata_details_dialog()
+
+        def _on_copy(evt):
+            self._copy_metadata_to_clipboard()
+
+        self.Bind(wx.EVT_MENU, _on_view, mi_view)
+        self.Bind(wx.EVT_MENU, _on_copy, mi_copy)
+        self.preview_bitmap.PopupMenu(menu, event.GetPosition())
+        menu.Destroy()
+
+    def _open_metadata_details_dialog(self):
+        """Open a dialog showing full EXIF/XMP for current preview file."""
+        if not self._last_preview_metadata:
+            wx.MessageBox("No metadata available.", "Info", wx.OK | wx.ICON_INFORMATION)
+            return
+        dlg = MetadataDetailsDialog(self, self.current_file_path or "(unspecified)", self._last_preview_metadata)
+        dlg.ShowModal()
+        dlg.Destroy()
+
+    def _copy_metadata_to_clipboard(self):
+        """Copy full metadata text to clipboard."""
+        if not self._last_preview_metadata:
+            return
+        text = self._build_metadata_full_text(self._last_preview_metadata)
+        if wx.TheClipboard.Open():
+            try:
+                wx.TheClipboard.SetData(wx.TextDataObject(text))
+            finally:
+                wx.TheClipboard.Close()
+            self.SetStatusText("Metadata copied to clipboard")
+        else:
+            self.SetStatusText("Unable to open clipboard")
 
     def on_template_selected(self, event):
         """Load selected template into editor."""
@@ -1160,6 +1277,74 @@ class TemplateManagerDialog(wx.Dialog):
     def on_close(self, event):
         """Close the dialog."""
         self.EndModal(wx.ID_OK)
+
+
+class MetadataDetailsDialog(wx.Dialog):
+    """Dialog to display full metadata for current image."""
+
+    def __init__(self, parent: wx.Frame, file_path: str, metadata: Dict[str, Any]):
+        super().__init__(parent, title=f"Metadata Details - {Path(file_path).name}", size=(650, 600))
+        panel = wx.Panel(self)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+
+        nb = wx.Notebook(panel)
+        # EXIF tab
+        exif_panel = wx.Panel(nb)
+        exif_sizer = wx.BoxSizer(wx.VERTICAL)
+        self.tc_exif = wx.TextCtrl(exif_panel, style=wx.TE_MULTILINE | wx.TE_READONLY)
+        exif_sizer.Add(self.tc_exif, 1, wx.EXPAND | wx.ALL, 6)
+        exif_panel.SetSizer(exif_sizer)
+        nb.AddPage(exif_panel, "EXIF")
+
+        # XMP tab
+        xmp_panel = wx.Panel(nb)
+        xmp_sizer = wx.BoxSizer(wx.VERTICAL)
+        self.tc_xmp = wx.TextCtrl(xmp_panel, style=wx.TE_MULTILINE | wx.TE_READONLY)
+        xmp_sizer.Add(self.tc_xmp, 1, wx.EXPAND | wx.ALL, 6)
+        xmp_panel.SetSizer(xmp_sizer)
+        nb.AddPage(xmp_panel, "XMP")
+
+        sizer.Add(nb, 1, wx.EXPAND | wx.ALL, 6)
+
+        # Buttons
+        btn_row = wx.BoxSizer(wx.HORIZONTAL)
+        btn_copy = wx.Button(panel, label="Copy All")
+        btn_close = wx.Button(panel, wx.ID_CLOSE, "Close")
+        btn_row.Add(btn_copy, 0, wx.RIGHT, 6)
+        btn_row.Add(btn_close, 0)
+        sizer.Add(btn_row, 0, wx.ALIGN_RIGHT | wx.ALL, 6)
+
+        panel.SetSizer(sizer)
+
+        # Fill data
+        exif = metadata.get('exif', {}) or {}
+        xmp = metadata.get('xmp', {}) or {}
+        self.tc_exif.SetValue('\n'.join(f"{k}: {self._format_display_value(exif[k])}" for k in sorted(exif.keys())))
+        self.tc_xmp.SetValue('\n'.join(f"{k}: {self._format_display_value(xmp[k])}" for k in sorted(xmp.keys())))
+
+        # Bind
+        btn_close.Bind(wx.EVT_BUTTON, lambda e: self.EndModal(wx.ID_OK))
+        btn_copy.Bind(wx.EVT_BUTTON, self.on_copy_all)
+
+    def _format_display_value(self, v: Any) -> str:
+        if isinstance(v, (list, tuple)):
+            return ', '.join(str(i) for i in v)
+        try:
+            return str(v)
+        except Exception:
+            return repr(v)
+
+    def on_copy_all(self, event):
+        all_text = [self.tc_exif.GetValue(), '', self.tc_xmp.GetValue()]
+        text = '\n'.join(all_text)
+        if wx.TheClipboard.Open():
+            try:
+                wx.TheClipboard.SetData(wx.TextDataObject(text))
+            finally:
+                wx.TheClipboard.Close()
+            wx.MessageBox("Metadata copied to clipboard.", "Copied", wx.OK | wx.ICON_INFORMATION)
+        else:
+            wx.MessageBox("Unable to open clipboard.", "Error", wx.OK | wx.ICON_ERROR)
 
 
 class App(wx.App):

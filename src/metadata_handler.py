@@ -187,44 +187,52 @@ class MetadataHandler:
             return {}
 
     def _read_exif(self, file_path: str) -> Dict[str, Any]:
-        """Extract EXIF data from image."""
-        exif_dict = {}
+        """Extract EXIF data from image.
+        Robust to unknown tags and includes all available IFDs.
+        """
+        exif_dict: Dict[str, Any] = {}
+
         try:
             img_data = piexif.load(file_path)
-            for ifd_name in ("0th", "Exif", "GPS", "1st"):
-                ifd = img_data[ifd_name]
-                for tag in ifd:
-                    tag_name = piexif.TAGS[ifd_name][tag]["name"]
-                    tag_value = ifd[tag]
-                    
-                    # Handle XP* fields (XPKeywords, XPSubject, XPTitle) which are UTF-16LE encoded
-                    # They can arrive as bytes or as an array of integers (byte values)
-                    if tag_name.startswith('XP') and tag_name.lower() in ('xpkeywords', 'xpsubject', 'xptitle', 'xpcomments'):
-                        # Convert array of integers to bytes if needed
+        except Exception:
+            # piexif couldn't parse; fall back to empty
+            return {}
+
+        # Iterate all dict-like IFDs present (avoid 'thumbnail' which is bytes)
+        for ifd_name, ifd in img_data.items():
+            if not isinstance(ifd, dict):
+                continue
+            for tag, tag_value in ifd.items():
+                # Resolve a friendly tag name when available; otherwise keep numeric tag id
+                try:
+                    tag_info = piexif.TAGS.get(ifd_name, {}).get(tag)
+                    tag_name = tag_info.get('name') if tag_info else None
+                except Exception:
+                    tag_info = None
+                    tag_name = None
+
+                if not tag_name:
+                    # Fallback name includes IFD and hex tag id to avoid collisions
+                    tag_name = f"{ifd_name}:0x{tag:04X}"
+
+                # Handle Windows XP* UTF-16LE fields specially
+                try:
+                    if tag_name.startswith('XP') or tag_name.lower() in ('xpkeywords', 'xpsubject', 'xptitle', 'xpcomments'):
                         if isinstance(tag_value, (list, tuple)):
+                            # convert sequence of ints -> bytes
                             try:
                                 tag_value = bytes(tag_value)
-                            except (TypeError, ValueError):
+                            except Exception:
                                 tag_value = str(tag_value)
-                        
-                        # Now decode UTF-16LE
                         if isinstance(tag_value, (bytes, bytearray)):
                             try:
                                 val = tag_value.decode('utf-16le', errors='ignore').rstrip('\x00')
                             except Exception:
-                                try:
-                                    val = tag_value.decode('utf-8', errors='replace')
-                                except Exception:
-                                    val = str(tag_value)
-                            
-                            # Split into list on semicolon, comma, or embedded nulls
+                                val = tag_value.decode('utf-8', errors='replace') if isinstance(tag_value, (bytes, bytearray)) else str(tag_value)
                             parts = [p.strip() for p in re.split(r'[;,\x00]+', val) if p.strip()]
                             tag_value = parts if len(parts) > 1 else (parts[0] if parts else '')
-                    
-                    # Handle other byte fields (UserComment, etc)
+                    # Handle other byte fields (e.g., UserComment)
                     elif isinstance(tag_value, (bytes, bytearray)):
-                        # Try utf-8 first, then other encodings
-                        val = None
                         try:
                             val = tag_value.decode('utf-8', errors='replace')
                         except Exception:
@@ -232,18 +240,18 @@ class MetadataHandler:
                                 val = tag_value.decode('utf-16le', errors='ignore')
                             except Exception:
                                 val = str(tag_value)
-                        
-                        # Clean up UserComment (may have ASCII prefix like "ASCII\x00\x00\x00")
                         if tag_name == 'UserComment' and val:
                             val = re.sub(r'^(ASCII|UNICODE|JIS)\s*\x00+', '', val, flags=re.IGNORECASE)
                             val = val.rstrip('\x00').strip()
-                        
                         tag_value = val
+                except Exception:
+                    # If decoding fails, keep original value
+                    pass
 
-                    exif_dict[tag_name] = tag_value
-        except Exception as e:
-            pass
-        # Normalize values for display/JSON
+                # Record the tag
+                exif_dict[tag_name] = tag_value
+
+        # Normalize values for display/JSON (does not drop any keys)
         try:
             return self._normalize_metadata_dict(exif_dict)
         except Exception:
